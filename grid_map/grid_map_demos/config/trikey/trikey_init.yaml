@@ -1,0 +1,7 @@
+zeros:
+  base_to_wheel_j0: 0
+  base_to_wheel_j1: 0
+  base_to_wheel_j2: 0
+  virtual_x: -0.3
+  virtual_y: -0.3
+  virtual_yaw: 0

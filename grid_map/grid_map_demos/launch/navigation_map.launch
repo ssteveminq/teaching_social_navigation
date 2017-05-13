@@ -1,0 +1,27 @@
+<launch>
+
+ <arg name="gui" default="false" />
+	<param name="use_gui" value="$(arg gui)"/>
+
+  <!-- Trikey linked to world-->
+  <param name="robot_description"	textfile="$(find grid_map_demos)/config/trikey/trikey_linked_to_world.urdf" /> 
+
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+    <rosparam param="source_list">["/new_joint_states"]</rosparam>
+  </node>
+
+  <rosparam file="$(find grid_map_demos)/config/trikey/trikey_init.yaml"/>
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
+
+  <!-- Launch the grid map simple demo node -->
+  <node pkg="grid_map_demos" type="navigation_map" name="grid_map_navigation_map" output="screen" />
+  <!-- Launch the grid map visualizer -->
+  
+  <node pkg="grid_map_visualization" type="grid_map_visualization" name="grid_map_visualization" output="screen">
+    <rosparam command="load" file="$(find grid_map_demos)/config/navigation_map.yaml" />
+  </node>
+
+  <!-- Launch RViz with the demo configuration -->
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find grid_map_demos)/rviz/grid_map_navigation.rviz" />
+
+</launch>
