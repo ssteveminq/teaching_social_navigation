@@ -98,8 +98,6 @@ void MDPManager::setPMapParam(MapParam* _pMapParam)
 
 }
 
-
-
 MDPManager::~MDPManager()
 {
 	if(pMapParam!=NULL)
@@ -108,7 +106,6 @@ MDPManager::~MDPManager()
 		pMapParam=NULL;
 	}
 }
-
 
 //Callback function for map
 // void MDPManager::local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
@@ -211,14 +208,12 @@ void MDPManager::Init()
 	 MapCoord.resize(2,0);
 
 	//Declare publisher
-	// if(boolRosparm)
-	//  {	
-		 obsmap_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/costmap", 10);
-		 Path_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/path", 10);
-		 SplinePath_pub=  m_node.advertise<nav_msgs::Path>("mdp_path", 10, true);
-		 SplinePath_pub2=  m_node.advertise<nav_msgs::Path>("mdp_path_2", 10, true);
+	 obsmap_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/costmap", 10);
+	 Path_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/path", 10);
+	 SplinePath_pub=  m_node.advertise<nav_msgs::Path>("mdp_path", 10, true);
+	 SplinePath_pub2=  m_node.advertise<nav_msgs::Path>("mdp_path_2", 10, true);
+	 Scaled_static_map_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_static_map", 10, true);
 
-	//}	
 }
 
 void MDPManager::CoordinateTransform_Rviz_Grid_Start(double _x, double _y)
@@ -324,6 +319,72 @@ void MDPManager::Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& m
 
       printf("Cur base x index is %.3f, y index is %.3f \n",CurVector[0],CurVector[1]); 
 
+}
+
+void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+{
+
+	double small_pos_x, small_pos_y=0.0;
+	double dist_x,dist_y=0.0;
+	int map_coord_i,map_coord_j=0;
+	int numcount=0;
+	int	original_width=msg->info.width;
+	int	original_height= msg->info.height;
+	double original_x=-51.225;
+	double original_y=-51.225;;
+	double oroginal_res=0.05;
+
+	Scaled_static_map.info.width=32;
+	Scaled_static_map.info.height= 32;
+	Scaled_static_map.info.resolution=0.5;
+	Scaled_static_map.info.origin.position.x=-4;
+	Scaled_static_map.info.origin.position.y=-4;
+	Scaled_static_map.data.resize(32*32);
+
+   double base_origin_x =msg->info.origin.position.x;
+   double base_origin_y =msg->info.origin.position.y;
+
+	std::map<int,int> occupancyCountMap;
+    int scaled_res=10;
+    int map_idx=0;
+    int scaled_result=0;
+
+   for(int j(0);j<Scaled_static_map.info.height;j++)
+   	for(int i(0);i<Scaled_static_map.info.width;i++)
+   	{
+   		map_idx=j*Scaled_static_map.info.height+i;
+   		double pos_x=i*Scaled_static_map.info.resolution+Scaled_static_map.info.origin.position.x;
+   		double pos_y=j*Scaled_static_map.info.resolution+Scaled_static_map.info.origin.position.y;
+
+   		numcount=0;
+   		for(int k(0);k<scaled_res;k++)
+   			for(int j(0);j<scaled_res;j++)
+   			{
+   				small_pos_x=pos_x+j*oroginal_res;
+   				small_pos_y=pos_y+k*oroginal_res;
+   				dist_x= small_pos_x-original_x;
+				dist_y= small_pos_y-original_y;
+				map_coord_i=floor(dist_x/oroginal_res);
+				map_coord_j=floor(dist_y/oroginal_res);
+				
+				int map_data_index=original_width*map_coord_j+map_coord_i;
+				float temp_occupancy= msg->data[map_data_index];
+    			 if(temp_occupancy>0)
+				 	numcount++;
+   			}
+
+   			if(numcount>3)
+   				scaled_result=50;
+   			else
+   				scaled_result=0;
+
+   			Scaled_static_map.data[map_idx]=scaled_result;
+   	}
+
+     //find index from
+	 Scaled_static_map.header.stamp =  ros::Time::now();
+	 Scaled_static_map.header.frame_id = "map"; 
+    Scaled_static_map_pub.publish(Scaled_static_map);
 }
 
 
@@ -593,26 +654,6 @@ char MDPManager::getPolicychar(int policyidx)
 	char policychars;
 	switch(policyidx)
 	{
-
-
-		// case 0:
-		// 	policychars='-';				break;
-		// case 1:
-		// 	policychars='-';				break;
-		// case 2:
-		// 	policychars='-';				break;
-		// case 3:
-		// 	policychars='-';				break;
-		// // case 4:
-		// // 	policychars='W';				break;
-		// // case 5:	
-		// // 	policychars='Z';				break;
-		// // case 6:
-		// // 	policychars='S';				break;
-		// // case 7:
-		// // 	policychars='C';				break;
-
-
 
 		case 0:
 			policychars='E';				break;

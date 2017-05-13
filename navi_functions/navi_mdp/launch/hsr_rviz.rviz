@@ -89,7 +89,7 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /grid/feature_map_cells
+      Topic: /scaled_static_map
       Unreliable: false
       Value: true
     - Alpha: 1
@@ -394,7 +394,7 @@ Visualization Manager:
       Marker Topic: /grid/cell_array_markers
       Name: MarkerArray
       Namespaces:
-        grid_cells: true
+        {}
       Queue Size: 100
       Value: true
     - Alpha: 1
@@ -428,7 +428,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 9.38653
+      Distance: 14.4327
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
@@ -461,5 +461,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 2379
-  X: 381
-  Y: 314
+  X: 371
+  Y: 226

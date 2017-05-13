@@ -34,6 +34,7 @@
 #define Goal_X 22
 #define Goal_Y 5
 
+
 #define Num_action 8
 #define deltaMin 1E-05
 #define Maxiteration 450
@@ -138,14 +139,23 @@ class MDPManager
  	srBSpline*           m_CubicSpline_y;
 
  
+
+
  	bool    m_boolSolve;
  	
-	ros::NodeHandle m_node; 	
-	ros::Publisher  obsmap_Pub;
-	ros::Publisher  Path_Pub;
+	ros::NodeHandle  m_node; 	
+	ros::Publisher   obsmap_Pub;
+	ros::Publisher   Scaled_static_map_pub;
+	ros::Publisher   Path_Pub;
 	ros::Subscriber  Localmap_sub;
-	ros::Publisher SplinePath_pub;
-	ros::Publisher SplinePath_pub2;
+	ros::Publisher 	 SplinePath_pub;
+	ros::Publisher 	 SplinePath_pub2;
+
+
+	//Static_mdp
+	int  scaling=12;
+	nav_msgs::OccupancyGrid Scaled_static_map;
+
 	
  	//functions
  	void 			Init();								 //Initialize function
@@ -174,10 +184,12 @@ class MDPManager
  	void            pathPublish();
  	void  			updateMap(vector<int>& localmap_,vector<int>& local_start, vector<int>& local_goal);
  	void 			Local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+ 	void 			static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
  	void			ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr& msg);
  	void 			Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& msg);
  	void 			Global2MapCoord(const vector<double>& _globalcoord, vector<int>& MapCoord);
  	void    		CoordinateTransform_Rviz_Grid_Start(double _x, double _y);
 	void    		CoordinateTransform_Rviz_Grid_Goal(double _x, double _y);
+	
 };
 
