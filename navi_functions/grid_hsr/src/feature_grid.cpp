@@ -982,7 +982,7 @@ void GridMap::joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg){
 	robot_world_y_pos = robot_y;
 	
 	robot_world_theta_pos=asin(robot_theta)*2;
-	ROS_INFO("robot_theta : %.3lf \n ", robot_world_theta_pos);
+	//ROS_INFO("robot_theta : %.3lf \n ", robot_world_theta_pos);
 
 	for(size_t i = 0; i < index_of_robot_occ_cells.size(); i++){
 		int cell_index = index_of_robot_occ_cells[i];		

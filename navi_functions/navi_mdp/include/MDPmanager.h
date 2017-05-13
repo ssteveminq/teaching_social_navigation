@@ -24,9 +24,9 @@
 #define Dy_OBS_CELL 1
 #define Human_CELL 3
 
-#define Grid_STEP 0.25
-#define Grid_Num_X 28
-#define Grid_Num_Y 28
+#define Grid_STEP 0.5
+#define Grid_Num_X 32
+#define Grid_Num_Y 32
 
 #define Start_X 14 
 #define Start_Y 14
@@ -37,7 +37,7 @@
 
 #define Num_action 8
 #define deltaMin 1E-05
-#define Maxiteration 450
+#define Maxiteration 300
 
 #define ra (-1.0)
 using namespace Eigen;
@@ -139,22 +139,22 @@ class MDPManager
  	srBSpline*           m_CubicSpline_y;
 
  
-
-
  	bool    m_boolSolve;
  	
 	ros::NodeHandle  m_node; 	
 	ros::Publisher   obsmap_Pub;
 	ros::Publisher   Scaled_static_map_pub;
+	ros::Publisher   Scaled_static_map_path_pub;
 	ros::Publisher   Path_Pub;
 	ros::Subscriber  Localmap_sub;
 	ros::Publisher 	 SplinePath_pub;
 	ros::Publisher 	 SplinePath_pub2;
-
+	
 
 	//Static_mdp
 	int  scaling=12;
 	nav_msgs::OccupancyGrid Scaled_static_map;
+	nav_msgs::OccupancyGrid Scaled_static_map_path;
 
 	
  	//functions
@@ -186,6 +186,7 @@ class MDPManager
  	void 			Local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
  	void 			static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
  	void			ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr& msg);
+ 	void 			base_pose_callback(const nav_msgs::Odometry::ConstPtr& msg);
  	void 			Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& msg);
  	void 			Global2MapCoord(const vector<double>& _globalcoord, vector<int>& MapCoord);
  	void    		CoordinateTransform_Rviz_Grid_Start(double _x, double _y);

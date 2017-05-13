@@ -125,6 +125,14 @@ MDPManager::~MDPManager()
 //    return;
 // }
 
+void MDPManager::base_pose_callback(const nav_msgs::Odometry::ConstPtr& msg)
+{
+
+   CurVector[0]= msg->pose.pose.position.x;
+   CurVector[1]= msg->pose.pose.position.y;
+
+}
+
 
 void MDPManager::Init()
 {
@@ -139,8 +147,7 @@ void MDPManager::Init()
  	cout<<" Grid - X :"<<X_mapSize<<", - Y : "<<Y_mapSize<<endl;
  	cout<<" NumofGrids : "<<Num_Grids<<endl;
 
- 	
-	Policies.resize(pMapParam->MapSize, '0');
+ 	Policies.resize(pMapParam->MapSize, '0');
  	Rewards.resize(pMapParam->MapSize, Ra); 
  	U.resize(pMapParam->MapSize, 0.0); 
  	Up.resize(pMapParam->MapSize, 0.0); 
@@ -164,7 +171,6 @@ void MDPManager::Init()
 
  	Rewards[Coord2CellNum(m_Goal)]=100;
  	Policies[Coord2CellNum(m_Goal)]='+';
-
 
 
  	for(int i(0);i<m_static_obs.size();i++){
@@ -194,11 +200,9 @@ void MDPManager::Init()
 	Prob_good = 0.95;
 	Prob_bad = (1-Prob_good)/2.0;
 
-
 	 Map_orig_Vector.resize(2,0.0);
-
 	 Map_orig_Vector[0]= 3.5;
-   Map_orig_Vector[1]=-3.5;
+   	 Map_orig_Vector[1]=-3.5;
 
 
 	 CurVector.resize(2,0.0);
@@ -207,23 +211,43 @@ void MDPManager::Init()
 	 Goal_Coord.resize(2,0);
 	 MapCoord.resize(2,0);
 
+	 m_localoccupancy.resize(32*32);
+
 	//Declare publisher
 	 obsmap_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/costmap", 10);
 	 Path_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/path", 10);
 	 SplinePath_pub=  m_node.advertise<nav_msgs::Path>("mdp_path", 10, true);
 	 SplinePath_pub2=  m_node.advertise<nav_msgs::Path>("mdp_path_2", 10, true);
 	 Scaled_static_map_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_static_map", 10, true);
+	 Scaled_static_map_path_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_static_map_path", 10, true);
+
+
+	Scaled_static_map_path.info.width=32;
+	Scaled_static_map_path.info.height= 32;
+	Scaled_static_map_path.info.resolution=0.5;
+	Scaled_static_map_path.info.origin.position.x=-4;
+	Scaled_static_map_path.info.origin.position.y=-4;
+	Scaled_static_map_path.data.resize(32*32);
 
 }
 
+//function which relates to get origin w.r.t map (mdp)
 void MDPManager::CoordinateTransform_Rviz_Grid_Start(double _x, double _y)
 {
 	 cur_coord.resize(2,0);
-	//double temp_x  = _y+3.5;
-	//double  temp_y = -_x+3.5;
 
-	double temp_x  = -_x+3.5;
-	double  temp_y = -_y+3.5;
+	
+	 //for case of using static map
+	double reference_origin_x =Scaled_static_map.info.origin.position.x;
+	double reference_origin_y =Scaled_static_map.info.origin.position.y;
+
+	//for case of using static map
+	// double reference_origin_x =-3.5;
+	// double reference_origin_y =-3.5;
+
+
+	double  temp_x  = _x-reference_origin_x;
+	double  temp_y = _y-reference_origin_y;
 
 
 	cur_coord[0]= (int) (temp_x/Grid_STEP);
@@ -232,19 +256,24 @@ void MDPManager::CoordinateTransform_Rviz_Grid_Start(double _x, double _y)
  	 return;
 }
 
+//function which relates to get origin w.r.t map (mdp)
 void MDPManager::CoordinateTransform_Rviz_Grid_Goal(double _x, double _y)
 {
 	 Goal_Coord.resize(2,0);
 	
-	// double temp_x  = _y+3.5;
-	// double  temp_y = -_x+3.5;
+	double reference_origin_x =Scaled_static_map.info.origin.position.x;
+	double reference_origin_y =Scaled_static_map.info.origin.position.y;
 
+	//for case of using static map
+	// double reference_origin_x =-3.5;
+	// double reference_origin_y =-3.5;
 
-	double temp_x  = -_x+3.5;
-	double  temp_y = -_y+3.5;
+	double  temp_x  = _x-reference_origin_x;
+	double  temp_y = _y-reference_origin_y;
+
 
  	Goal_Coord[0]= (int) (temp_x/Grid_STEP);
- 	 Goal_Coord[1]= (int)(temp_y/Grid_STEP);
+ 	Goal_Coord[1]= (int)(temp_y/Grid_STEP);
 
  	 return;
 
@@ -256,26 +285,21 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
 
 	printf("Receive point\n");
 
-    GoalVector.resize(2,0);	
+    GoalVector.resize(2,0);
 
     GoalVector[0]=msg->point.x;
 	GoalVector[1]=msg->point.y;
-
-
     // GoalVector[0]=msg->point.x-Map_orig_Vector[0];
     // GoalVector[1]=msg->point.y-Map_orig_Vector[1];
-            
-     CurVector[0]=0.0;
-     CurVector[1]=0.0;
+     
+    // CurVector[0]=0.0;
+    // CurVector[1]=0.0;
 
 
     // printf(" cur x index is %.3f, cur y index is %.3f \n",CurVector[0],CurVector[1]);  
     // printf(" goal x index is %.3f, goal y index is %.3f \n",GoalVector[0],GoalVector[1]);  
-
-
      cur_coord.resize(2);
 	 Goal_Coord.resize(2);
-
 	 
 	 CoordinateTransform_Rviz_Grid_Start(CurVector[0],CurVector[1]);
 	 CoordinateTransform_Rviz_Grid_Goal(GoalVector[0],GoalVector[1]);
@@ -303,6 +327,8 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
       return;
 }
 
+
+
 void MDPManager::Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& msg)
 {
 
@@ -314,10 +340,10 @@ void MDPManager::Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& m
    printf("Map origin x index is %.3f, y index is %.3f \n",Map_orig_Vector[0],Map_orig_Vector[1]); 
 
 
-   CurVector[0]= msg->point.x;
-   CurVector[1]= msg->point.y;
+   // CurVector[0]= msg->point.x;
+   // CurVector[1]= msg->point.y;
 
-      printf("Cur base x index is %.3f, y index is %.3f \n",CurVector[0],CurVector[1]); 
+   //    printf("Cur base x index is %.3f, y index is %.3f \n",CurVector[0],CurVector[1]); 
 
 }
 
@@ -334,12 +360,27 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	double original_y=-51.225;;
 	double oroginal_res=0.05;
 
+	//for static space map
 	Scaled_static_map.info.width=32;
 	Scaled_static_map.info.height= 32;
 	Scaled_static_map.info.resolution=0.5;
 	Scaled_static_map.info.origin.position.x=-4;
 	Scaled_static_map.info.origin.position.y=-4;
 	Scaled_static_map.data.resize(32*32);
+
+
+	//for path map
+	// Scaled_static_map_path.info.width=32;
+	// Scaled_static_map_path.info.height= 32;
+	// Scaled_static_map_path.info.resolution=0.5;
+	// Scaled_static_map_path.info.origin.position.x=-4;
+	// Scaled_static_map_path.info.origin.position.y=-4;
+	//Scaled_static_map_path.data.resize(32*32);
+
+
+
+
+
 
    double base_origin_x =msg->info.origin.position.x;
    double base_origin_y =msg->info.origin.position.y;
@@ -385,6 +426,13 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	 Scaled_static_map.header.stamp =  ros::Time::now();
 	 Scaled_static_map.header.frame_id = "map"; 
     Scaled_static_map_pub.publish(Scaled_static_map);
+
+
+    //m_localoccupancy.resize()
+
+    for(int i(0);i<m_localoccupancy.size();i++)
+    	m_localoccupancy[i]=Scaled_static_map.data[i];
+
 }
 
 
@@ -410,11 +458,11 @@ void MDPManager::Local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 
    //ROS_INFO("origin x: %lf, y : %lf",base_origin_x,base_origin_y);
    //ROS_INFO("int msg");
-    m_localoccupancy.resize(msg->data.size());
+   //  m_localoccupancy.resize(msg->data.size());
 
-   for(int i(0);i<msg->data.size();i++){
-        m_localoccupancy[i]=(msg->data)[i];
-   }	
+   // for(int i(0);i<msg->data.size();i++){
+   //      m_localoccupancy[i]=(msg->data)[i];
+   // }	
 
    ReceiveData++;
 
@@ -547,16 +595,11 @@ void MDPManager::CellNum2Coord(const int Cell_idx, vector<int>& cell_xy)
 bool MDPManager::MDPsolve()
 {
 	ROS_INFO("Solve");
-	//cout<<"Solve"<<endl;
-	//x(0),y(1),reward(2),iterationreward(3), tempreward(4), PolicyNum(5), 
 	int colNum=6;
 	int idx=0;
 
 	Points.clear();
 	Points.resize(colNum);
-	// for(int i(0);i<colNum;i++)
-	// 	Points[i].resize(Num_Grids);
-
 	//Check for row-wise or column-wise
 	
 	for(int j(0);j<Y_mapSize;j++){
@@ -589,7 +632,7 @@ bool MDPManager::MDPsolve()
 		}
 		
 		for(int k(0);k<Num_Grids;k++){
-			updateUprimePi(k);	//update Up and Policy, PolicyNum
+			updateUprimePi(k);				//update Up and Policy, PolicyNum
 			diff = abs(Up[k]-U[k]);
 
 			//check maxim error for whole states
@@ -909,9 +952,9 @@ void MDPManager::pathPublish(){
 	obsmap_Pub.publish(obsmap_msg);
 	// MDPPath.clear();
 
-	std_msgs::Int32MultiArray pathmap_msg;
-	pathmap_msg.data = MDPPath;
-	Path_Pub.publish(pathmap_msg);
+	// std_msgs::Int32MultiArray pathmap_msg;
+	// pathmap_msg.data = MDPPath;
+	// Path_Pub.publish(pathmap_msg);
 	//cout<<"publish"<<endl;
 	//publishnum++;
 }
@@ -941,7 +984,7 @@ void MDPManager::generatePath()
 
 	cout<<"cur st id : "<<cur_stid<<endl;
 	MDPPath.push_back(cur_stid);
-
+	
 	while(1)
 	{
 		//get next position from policy solution
@@ -951,94 +994,123 @@ void MDPManager::generatePath()
 		x_values.push_back(cur_pos[0]);
 		y_values.push_back(cur_pos[1]);
 
-		
 		cur_stid=Coord2CellNum(cur_pos);
 		MDPPath.push_back(cur_stid);
-		
+
+
+
+		//ROS_INFO("Id : %d, x:  %d, y : %d \n",cur_stid, cur_pos);
+
 		if(cur_stid==goal_stid)
 			break;
 	}
 
-	for(int j(0);j<MDPPath.size();j++)
-		cout<<"j:"<<j<<", id :"<<MDPPath[j]<<endl;
+	//Making Spline path=======================
+	// int data_size=x_values.size();
+	// for(int k=0;k<data_size;k++)
+	// 	//printf("spline path index : %d, x_values : %lf , y values : %lf \n", k,x_values[k],y_values[k]);
 
-	//Making Spline path
-	int data_size=x_values.size();
-	for(int k=0;k<data_size;k++)
-		//printf("spline path index : %d, x_values : %lf , y values : %lf \n", k,x_values[k],y_values[k]);
-
-	//Making t-vetors;
-	t_values.resize(x_values.size());
-	//t_values[0]=0;
-	double time_length=1.0;
-	double time_const=(time_length)/data_size;
-	for(int k(0);k<data_size;k++)
-		t_values[k]=k*time_const;
+	// //Making t-vetors;
+	// t_values.resize(x_values.size());
+	// //t_values[0]=0;
+	// double time_length=1.0;
+	// double time_const=(time_length)/data_size;
+	// for(int k(0);k<data_size;k++)
+	// 	t_values[k]=k*time_const;
+	
 
 
-	m_CubicSpline_x = new srBSpline;
-	m_CubicSpline_x->_Clear();
+	// m_CubicSpline_x = new srBSpline;
+	// m_CubicSpline_x->_Clear();
 
-	m_CubicSpline_y = new srBSpline;
-	m_CubicSpline_y->_Clear();
+	// m_CubicSpline_y = new srBSpline;
+	// m_CubicSpline_y->_Clear();
 
-	vector<int> Spline_x;
-	vector<int> Spline_y;
-	m_CubicSpline_x->CubicSplineInterpolation(t_values,x_values,x_values.size());
-	m_CubicSpline_y->CubicSplineInterpolation(t_values,y_values,y_values.size());
+	// vector<int> Spline_x;
+	// vector<int> Spline_y;
+	// m_CubicSpline_x->CubicSplineInterpolation(t_values,x_values,x_values.size());
+	// m_CubicSpline_y->CubicSplineInterpolation(t_values,y_values,y_values.size());
 
-	int path_size=4;	
-	double const_path=(time_length)/ path_size ;
+	// int path_size=4;	
+	// double const_path=(time_length)/ path_size ;
 
-	Spline_x.push_back(x_values[0]);
-	Spline_y.push_back(y_values[0]);
+	// Spline_x.push_back(x_values[0]);
+	// Spline_y.push_back(y_values[0]);
 
-	double ret_x=0.0;
-	double ret_y=0.0;
-	double t_idx=0.0;
-	 for(int j(0);j<path_size;j++){
-  	   t_idx=(j+1)*const_path;
-       m_CubicSpline_x->getCurvePoint(ret_x,t_idx);
-       m_CubicSpline_y->getCurvePoint(ret_y,t_idx);
+	// double ret_x=0.0;
+	// double ret_y=0.0;
+	// double t_idx=0.0;
+	//  for(int j(0);j<path_size;j++){
+ //  	   t_idx=(j+1)*const_path;
+ //       m_CubicSpline_x->getCurvePoint(ret_x,t_idx);
+ //       m_CubicSpline_y->getCurvePoint(ret_y,t_idx);
 
-       Spline_x.push_back(ret_x);
-       Spline_y.push_back(ret_y);
-     }
+ //       Spline_x.push_back(ret_x);
+ //       Spline_y.push_back(ret_y);
+ //     }
 
-     //Publish Pline Path
-  	nav_msgs::Path path, smoothedPath;
-  	path.header.frame_id = "map_local";
-  	smoothedPath.header.frame_id = "map_local";
-  	geometry_msgs::PoseStamped pose;
-	// pose.header.frame_id = "map_local";
+     //Publish SPline Path
+ //  	nav_msgs::Path path, smoothedPath;
+ //  	path.header.frame_id = "map";
+ //  	smoothedPath.header.frame_id = "map";
+ //  	geometry_msgs::PoseStamped pose;
+	// // pose.header.frame_id = "map_local";
 
-	 for (int i = 0; i < path_size; i++)
- 	 {
+	//  for (int i = 0; i < path_size; i++)
+ // 	 {
 	    
-	    pose.pose.position.x=Spline_x[i]*0.25-3.5-0.5*0.25;
-	   	pose.pose.position.y=Spline_y[i]*0.25-3.5-0.5*0.25;
-	   	printf("spline path2 index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
-	   	pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
-	   	smoothedPath.poses.push_back(pose);
+	//     pose.pose.position.x=Spline_x[i]*Grid_STEP+8-0.5*Grid_STEP;
+	//    	pose.pose.position.y=Spline_y[i]*Grid_STEP+8-0.5*Grid_STEP;
+	//     // pose.pose.position.x=Spline_x[i]*0.25-3.5-0.5*0.25;
+	//    	// pose.pose.position.y=Spline_y[i]*0.25-3.5-0.5*0.25;
+	//    	printf("spline path2 index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
+	//    	pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
+	//    	smoothedPath.poses.push_back(pose);
 	    
-	   	// printf("--------------------------------------------");
+	//    	// printf("--------------------------------------------");
 
-	    pose.pose.position.x = -Spline_x[i]*0.25+3.5-0.5*0.25;
-	    pose.pose.position.y = -Spline_y[i]*0.25+3.5-0.5*0.25;
-	    printf("spline path index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
-	    pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
-	    path.poses.push_back(pose);
+	//     pose.pose.position.x = -Spline_x[i]*Grid_STEP-8-0.5*Grid_STEP;
+	//     pose.pose.position.y = -Spline_y[i]*Grid_STEP-8-0.5*Grid_STEP;
+	//     printf("spline path index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
+	//     pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
+	//     path.poses.push_back(pose);
 
-	}
-	 SplinePath_pub.publish(path);
-	 SplinePath_pub2.publish(smoothedPath);
+	// }
+	//  SplinePath_pub.publish(path);
+	//  SplinePath_pub2.publish(smoothedPath);
+
+	 // Publish static map_path
+
+	nav_msgs::OccupancyGrid Scaled_static_map_path;
+
+	Scaled_static_map_path.info.width=32;
+	Scaled_static_map_path.info.height= 32;
+	Scaled_static_map_path.info.resolution=0.5;
+	Scaled_static_map_path.info.origin.position.x=-4;
+	Scaled_static_map_path.info.origin.position.y=-4;
+	Scaled_static_map_path.data.resize(32*32);
+	for(int j(0);j<Scaled_static_map_path.data.size();j++)
+	 {	
+
+	 	Scaled_static_map_path.data[j]=0.0;
+	 }
+
+
+	 for(int k(0); k<MDPPath.size();k++)
+	 	Scaled_static_map_path.data[MDPPath[k]]=30;
+
+
+	 Scaled_static_map_path.header.stamp =  ros::Time::now();
+	 Scaled_static_map_path.header.frame_id = "map"; 
+     Scaled_static_map_path_pub.publish(Scaled_static_map_path);
+
 
 
 	//Publish path after planning
-	std_msgs::Int32MultiArray pathmap_msg;
-	pathmap_msg.data = MDPPath;
-	Path_Pub.publish(pathmap_msg);
-	ROS_INFO("publish");
+	// std_msgs::Int32MultiArray pathmap_msg;
+	// pathmap_msg.data = MDPPath;
+	// Path_Pub.publish(pathmap_msg);
+	// ROS_INFO("publish");
 
 }	
 
