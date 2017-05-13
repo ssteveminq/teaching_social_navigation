@@ -256,7 +256,7 @@ void GridMap::visualize_robotEnvFeatures(){
 	features_viz.markers.push_back(sub_cells_features_human_list);			
 
 
-	features_viz_pub.publish(features_viz);
+//	features_viz_pub.publish(features_viz);
 }
 
 void GridMap::change_marker_prop(int occupancy_type, visualization_msgs::Marker &marker){
@@ -709,7 +709,7 @@ void GridMap::construct_robot_cells(){
 
 void GridMap::publish(){
 	cell_array_pub.publish(cell_array);
-	robot_cells_pub.publish(cell_array_dyn);
+	//robot_cells_pub.publish(cell_array_dyn);
 
 }
 
@@ -892,26 +892,26 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		 	ROS_INFO("map index : %d, counts : %d \n",mapiter->first,mapiter->second);
 			
 
-		int datasize=9;
-		map_free_cell_list = make_cell_list_marker(FREE_CELL);
+		 int datasize=9;
+		// map_free_cell_list = make_cell_list_marker(FREE_CELL);
 
-		for(size_t kk = 0; kk < 9; kk++){
-			geometry_msgs::Point cell_loc;
+		// for(size_t kk = 0; kk < 9; kk++){
+		// 	geometry_msgs::Point cell_loc;
 
-			cell_loc.x = x_pos_set[kk];
-			cell_loc.y = y_pos_set[kk];
-			cell_loc.z = 0.2;
-			map_free_cell_list.points.push_back(cell_loc);
+		// 	cell_loc.x = x_pos_set[kk];
+		// 	cell_loc.y = y_pos_set[kk];
+		// 	cell_loc.z = 0.2;a
+		// 	map_free_cell_list.points.push_back(cell_loc);
 
-			}
+		// 	}
 
-			geometry_msgs::Point cell_loc2;
-			cell_loc2.x = robot_world_x_pos;
-			cell_loc2.y = robot_world_x_pos;
-			cell_loc2.z = 0.2;
+		// 	geometry_msgs::Point cell_loc2;
+		// 	cell_loc2.x = robot_world_x_pos;
+		// 	cell_loc2.y = robot_world_x_pos;
+		// 	cell_loc2.z = 0.2;
 
-			map_free_cell_list.points.push_back(cell_loc2);				
-			cell_array.markers.push_back(map_free_cell_list);
+		// 	map_free_cell_list.points.push_back(cell_loc2);				
+		// 	cell_array.markers.push_back(map_free_cell_list);
 
 			//For checking 
 			//  //map_free_cell_list_dyn= make_cell_list_marker(2);
@@ -1612,19 +1612,24 @@ int main(int argc, char **argv)
   GridMap gridmap;
 
   gridmap.cell_array_pub = gridmap.node.advertise<visualization_msgs::MarkerArray>( "grid/cell_array_markers", 1 );
-  gridmap.robot_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/robot_marker", 1 );
+
+
+/*  gridmap.robot_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/robot_marker", 1 );
   gridmap.CBA_grid_pub = gridmap.node.advertise<cba_msgs::CBA_NavInfo>("/CBA_grid_occ_topic", 0);
+*/  
   gridmap.renew_dyn_grid_pub=gridmap.node.advertise<nav_msgs::OccupancyGrid>("grid/renew_dyn_map_cells", 1);
 
-  gridmap.human_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/human_cells", 1 );
+//  gridmap.human_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/human_cells", 1 );
+
+
   gridmap.trikey_state_sub = gridmap.node.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, boost::bind(&GridMap::joint_state_callback, &gridmap, _1));
-  gridmap.sensor_sub = gridmap.node.subscribe<sensor_msgs::Imu>("/hsrb/base_imu/data", 10, boost::bind(&GridMap::sensor_callback, &gridmap, _1));
+  //gridmap.sensor_sub = gridmap.node.subscribe<sensor_msgs::Imu>("/hsrb/base_imu/data", 10, boost::bind(&GridMap::sensor_callback, &gridmap, _1));
 
 
   // gridmap.human_bounding_boxes_sub = gridmap.node.subscribe<visualization_msgs::MarkerArray>("/human_boxes_3D", 10, boost::bind(&GridMap::human_detection_callback, &gridmap, _1));
   // gridmap.detected_humans_number_sub = gridmap.node.subscribe<std_msgs::Int8>("/detection/number_of_detected_humans", 10, boost::bind(&GridMap::number_detected_callback, &gridmap, _1));
-  gridmap.camera_viz_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/cam_visibility_cells", 1 );
-  gridmap.features_viz_pub = gridmap.node.advertise<visualization_msgs::MarkerArray> ("grid/feature_cells", 1);
+ // gridmap.camera_viz_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/cam_visibility_cells", 1 );
+ // gridmap.features_viz_pub = gridmap.node.advertise<visualization_msgs::MarkerArray> ("grid/feature_cells", 1);
 
   // //added by Mk
   gridmap.feature_map_pub= gridmap.node.advertise<nav_msgs::OccupancyGrid>("grid/feature_map_cells", 1);

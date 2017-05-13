@@ -73,7 +73,7 @@ std::string filename = "/home/stevenjj/test.bag";//package_path + "/grid_maps/ET
 */
 
 std::string read_topic_name = "grid/stored_proj_map";
-std::string package_path = ros::package::getPath("grid");
+std::string package_path = ros::package::getPath("grid_hsr");
 std::string filename = package_path + "/grid_maps/ETC_Hallway_occupancy12-09-2016.bag";
 
 std::string WORLD_FRAME = "world";
