@@ -8,6 +8,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   geometry_msgs
   sensor_msgs
+  cba_msgs
   message_generation
   classifier_hsr  
   nav_msgs  
@@ -32,6 +33,7 @@ catkin_package(
   	sensor_msgs
 	  message_runtime
     nav_msgs
+    cba_msgs
     rosbag	
     roslib    
     tf

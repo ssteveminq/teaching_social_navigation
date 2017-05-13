@@ -16,6 +16,7 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
   trajectory_msgs
   control_msgs
+  cba_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -24,15 +25,15 @@ include_directories(include)
 include_directories(src)
 
 
-add_message_files(FILES CBA_NavInfo.msg)
+#add_message_files(FILES CBA_NavInfo.msg)
 #add_service_files(FILES CBA_Navinoservice.srv)
 
 
 
-generate_messages(
-   DEPENDENCIES
-   std_msgs
-)
+#generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+#)
 
 
 catkin_package(
@@ -43,6 +44,7 @@ catkin_package(
   	roscpp
   	geometry_msgs
   	sensor_msgs
+    cba_msgs
   	message_runtime
  )
 
@@ -56,8 +58,8 @@ include_directories(
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-add_executable(hsr_classifier_test src/classifier_test.cpp ${SOURCES})
-target_link_libraries(hsr_classifier_test ${catkin_LIBRARIES})
+#add_executable(hsr_classifier_test src/classifier_test.cpp ${SOURCES})
+#target_link_libraries(hsr_classifier_test ${catkin_LIBRARIES})
 
 install(DIRECTORY scripts/
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

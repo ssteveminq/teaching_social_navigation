@@ -1,25 +1,7 @@
-#include "grid.h"
+#include "feature_grid.h"
 
 // This class creates a grid of the world starting at x=0, y=0 and goes to x=CELL_X_WIDTH*NUM_CELL_WIDTH, y =CELL_Y_WIDTH*NUM_CELL_HEIGHT 
 
-class Cell{
-public:
-	float x_center;
-	float y_center;
-
-	int grid_x_index;
-	int grid_y_index;
-
-	int id;
-
-	int cell_type;
-
-	Cell(int id_);
-	Cell(float x_init, float y_init, int x_index_init, int y_index_init, int cell_id);
-	Cell(float x_init, float y_init, int x_index_init, int y_index_init, int cell_id, int cell_type_in);	
-	Cell();
-	~Cell();
-};
 Cell::Cell(){
 }
 Cell::~Cell(){}
@@ -39,31 +21,7 @@ Cell::Cell(float x_init, float y_init, int x_index_init, int y_index_init, int c
 																			cell_type(cell_type_in) {
 }
 
-class CellFeature{
-public:
-	int id;
-	float x_center;
-	float y_center;	
-	float cell_feature_size;
 
-	std::map<int, int>   cell_index_to_type;
-	std::map<int, float> cell_index_to_distance_to_center;
-	std::map<int, int>   cell_type_to_count;
-
-
-	int primary_type;
-
-	float min_distance_to_center;
-
-
-	void init_values();
-	void compute_features();
-	void clear();
-	CellFeature();
-	CellFeature(int id_in, float x_center_in, float y_center_in);	
-
-	~CellFeature();
-};
 
 CellFeature::CellFeature(){
 	init_values();
@@ -123,157 +81,6 @@ void CellFeature::compute_features(){
 CellFeature::~CellFeature(){}
 
 
-class GridMap{
-public:
-	ros::NodeHandle node;
-	ros::Publisher cell_array_pub;
-	ros::Publisher robot_cells_pub;
-
-	ros::Publisher CBA_grid_pub;
-	ros::Publisher  proj_map_pub;
-	ros::Publisher  camera_viz_pub;
-	ros::Publisher features_viz_pub;
-
-	ros::Subscriber trikey_state_sub;
-	ros::Subscriber static_obs_sub;
-	ros::Subscriber dynamic_obs_sub;
-
-
-	ros::Subscriber human_bounding_boxes_sub;	
-	ros::Subscriber detected_humans_number_sub;
-
-	ros::Publisher  human_cells_pub;
-
-	std::vector<CellFeature> robot_envFeatures;
-
-
-    // Grid Variables
-	float cell_x_width;
-	float cell_y_width;
-
-	float desired_resolution;
-
-	int num_of_cells_width;
-	int num_of_cells_height;	
-
-
-	float origin_x;
-	float origin_y;
-
-
-	float robot_world_x_pos;
-	float robot_world_y_pos;	
-
-
-	bool detected_human;
-
-
-	visualization_msgs::Marker 		map_free_cell_list;
-	visualization_msgs::Marker 		map_obstacle_cell_list;		
-
-	visualization_msgs::Marker      human_cell_list;
-	visualization_msgs::Marker      robot_cell_list;
-
-	visualization_msgs::Marker      camera_visibility_cell_list;
-
-	visualization_msgs::Marker      cell_features_list;
-
-	visualization_msgs::Marker      sub_cells_features_free_list;
-	visualization_msgs::Marker           sub_cells_features_obstacle_list;
-	visualization_msgs::Marker     		 sub_cells_features_robot_list;
-	visualization_msgs::Marker     		 sub_cells_features_human_list;
-		
-
-	visualization_msgs::MarkerArray      features_viz;	
-
-
-	tf::TransformBroadcaster 		world_to_map_br;
-  	tf::Transform 					world_to_map_transform;	
-
-
-	tf::TransformListener 			camera_to_world_listener;
-	tf::StampedTransform 			camera_to_world_transform;
-
-
-	tf::TransformListener 			map_to_world_listener;
-	tf::StampedTransform 			map_to_world_transform;
-
-
-
-	visualization_msgs::MarkerArray 	 cell_array;
-
-
-	//std::map<int, std::vector<int>> 
-	//std::map<int, std::vector<int>>  occupancy_type_to_true_index;
-
-
-	std::vector<Cell> data; // In row-major order;
-
-	std::vector<int> index_of_obstacle_occ_cells;
-	
-	std::vector<int> index_of_human_occ_cells_updated_recently;
-	std::map<int, float> map_index_of_human_cells_to_prob;
-
-	std::vector<int> index_of_robot_occ_cells;	
-
-	std::vector<int> index_of_updated_obstacle_occ_cells;
-	std::vector<int> index_of_updated_free_occ_cells;			
-
-
-	nav_msgs::OccupancyGrid static_map_grid;
-	nav_msgs::OccupancyGrid proj_map_grid; // The original map
-
-    // Functions
-    visualization_msgs::Marker make_cell_marker(int index, int grid_x_index, int grid_y_index, int cell_color);
-	visualization_msgs::Marker make_cell_list_marker(int occupancy_type);
-
-	void init_construct_free_and_occ_cells();
-	void construct_robot_cells();
-
-	void static_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
-	void dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
-
-    void joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg);
-    void human_detection_callback(const visualization_msgs::MarkerArray::ConstPtr &msg);    
-    void number_detected_callback(const std_msgs::Int8::ConstPtr &msg);
-	void update_human_occ_belief(int update_type);
-	void change_cell_color(int marker_index, int occupancy_type);
-	void bounding_box_to_occupany(float x_center, float y_center, float width, float length, int occupancy_type);
-	std::map<int, int> bounding_box_to_world_indices(float x_center, float y_center, float width, float length);
-	std::map<int, int> extract_world_indices_from_visible_camera_region(float depth, float width, float res);
-
-	int ij_index_to_true_index(int index_i, int index_j);
-
-
-    void identify_grid_map_occupancy();
-    void identify_static_grid_map_occupancy();
-    int proj_map_identify_occupancy(int index);
-    int static_map_identify_occupancy(int index);
-
-
-
-    void broadcast_tf_world_to_map();
-
-
-    void calculate_robotEnvFeatures();
-	void visualize_robotEnvFeatures();
-	void change_marker_prop(int occupancy_type, visualization_msgs::Marker &marker);
-
-    void publish();
-	void publish_orig_proj_map();
-	void CBA_publish();
-
-    // Constructor Destructor Functions
-	GridMap();
-	~GridMap();	
-
-private:
-    void initialize_marker_array();
-    int read_proj_map();
-    void convert_proj_map_to_cba_grid();
-    void convert_static_map_to_cba_grid();
-
-};
 
 GridMap::~GridMap(){
 	detected_human = false;
@@ -509,6 +316,7 @@ GridMap::GridMap(){
 		// proj_map_grid.header.stamp =  ros::Time::now	();
 		// proj_map_grid.header.frame_id = "map"; 
 
+	initialize_fature_occupancy();
 
 	broadcast_tf_world_to_map();
 	
@@ -526,6 +334,8 @@ GridMap::GridMap(){
 	num_of_cells_height=300;
 	num_of_cells_width=300;
 	
+	robot_world_x_pos=0.0;
+	robot_world_y_pos=0.0;
 
 	// // Construct Grid Map and Cells:
 	int cell_id = 0;
@@ -554,26 +364,21 @@ GridMap::GridMap(){
 	identify_static_grid_map_occupancy();
 	convert_static_map_to_cba_grid();
 
+	// -----------------------------------------------------------
+	//init_construct_free_and_occ_cells();
+	//cell_array.markers.push_back(map_free_cell_list);
+	// cell_array.markers.push_back(map_obstacle_cell_list);	
 
-	//
+	// robot_cell_list = make_cell_list_marker(ROBOT_OCCUPIED);
+	// human_cell_list = make_cell_list_marker(HUMAN_OCCUPIED);
+	// camera_visibility_cell_list = make_cell_list_marker(CAMERA_LIST_VIZ);
+ //  	cell_features_list = make_cell_list_marker(FEATURE_LIST_VIZ);
 
-    // -----------------------------------------------------------
-	init_construct_free_and_occ_cells();
-	cell_array.markers.push_back(map_free_cell_list);
-	cell_array.markers.push_back(map_obstacle_cell_list);	
-
-	robot_cell_list = make_cell_list_marker(ROBOT_OCCUPIED);
-	human_cell_list = make_cell_list_marker(HUMAN_OCCUPIED);
-	camera_visibility_cell_list = make_cell_list_marker(CAMERA_LIST_VIZ);
-  	cell_features_list = make_cell_list_marker(FEATURE_LIST_VIZ);
-
-	sub_cells_features_free_list = make_cell_list_marker(SUB_CELLS_LIST_FREE_VIZ);
-    sub_cells_features_obstacle_list = make_cell_list_marker(SUB_CELLS_LIST_OBS_VIZ);
-    sub_cells_features_robot_list = make_cell_list_marker(SUB_CELLS_LIST_ROB_VIZ);
-	sub_cells_features_human_list = make_cell_list_marker(SUB_CELLS_LIST_HUM_VIZ);
-
-//	initialize_marker_array();
-
+	// sub_cells_features_free_list = make_cell_list_marker(SUB_CELLS_LIST_FREE_VIZ);
+	 //    sub_cells_features_obstacle_list = make_cell_list_marker(SUB_CELLS_LIST_OBS_VIZ);
+	 //   sub_cells_features_robot_list = make_cell_list_marker(SUB_CELLS_LIST_ROB_VIZ);
+	// sub_cells_features_human_list = make_cell_list_marker(SUB_CELLS_LIST_HUM_VIZ);
+	//	initialize_marker_array();
 }
 
 
@@ -671,8 +476,23 @@ void GridMap::identify_static_grid_map_occupancy(){
 
 	}
 	std::cout << "Done with processing" << std::endl;
+}
+
+void GridMap::initialize_fature_occupancy(){
+
+	nav_msgs::OccupancyGrid feature_map_msg;
+
+	feature_map_grid.info.width=3;
+	feature_map_grid.info.height=3;
+	feature_map_grid.info.resolution=0.5;
+	//feature_map_grid.info.origin.position.x=-0.5*feature_map_grid.info.width*0.5;
+	//feature_map_grid.info.origin.position.y=-0.5*feature_map_grid.info.height*0.5;
+
+
 
 }
+
+
 
 void GridMap::identify_grid_map_occupancy(){
 	int proj_map_width = (int) proj_map_grid.info.width;
@@ -772,7 +592,7 @@ void GridMap::init_construct_free_and_occ_cells(){
 
 visualization_msgs::Marker GridMap::make_cell_list_marker(int occupancy_type){
 	visualization_msgs::Marker marker;
-	marker.header.frame_id = "map_local";
+	marker.header.frame_id = "map";
 	marker.header.stamp = ros::Time();
 	marker.ns = "grid_cells";
 	marker.id = occupancy_type;
@@ -792,7 +612,7 @@ visualization_msgs::Marker GridMap::make_cell_list_marker(int occupancy_type){
 	}else{
 		marker.scale.z = 0.1;
 	}
-	marker.color.a = 0.6; // Don't forget to set the alpha!
+	marker.color.a = 0.7; // Don't forget to set the alpha!
 
 	if (occupancy_type == ROBOT_OCCUPIED){
 		marker.color.r = 0.0; // BLUE color
@@ -807,9 +627,9 @@ visualization_msgs::Marker GridMap::make_cell_list_marker(int occupancy_type){
 		marker.color.g = 0.2;
 		marker.color.b = 0.2;	
 	}else{
-		marker.color.r = 0.8; // Light Gray color
-		marker.color.g = 0.8;
-		marker.color.b = 0.8;
+		marker.color.r = 0.3; // Light Gray color
+		marker.color.g = 0.3;
+		marker.color.b = 0.4;
 	}
 
 	return marker;
@@ -818,7 +638,7 @@ visualization_msgs::Marker GridMap::make_cell_list_marker(int occupancy_type){
 
 visualization_msgs::Marker GridMap::make_cell_marker(int index, int grid_x_index, int grid_y_index, int cell_status){
 	visualization_msgs::Marker marker;
-	marker.header.frame_id = "map_local";
+	marker.header.frame_id = "base_link";
 	marker.header.stamp = ros::Time();
 	marker.ns = "cells";
 	marker.id = index;
@@ -889,7 +709,7 @@ void GridMap::construct_robot_cells(){
 
 void GridMap::publish(){
 	cell_array_pub.publish(cell_array);
-	robot_cells_pub.publish(robot_cell_list);
+	robot_cells_pub.publish(cell_array_dyn);
 
 }
 
@@ -920,40 +740,284 @@ void GridMap::change_cell_color(int marker_index, int occupancy_type){
 void GridMap::static_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
 
+		std::cout <<"static_Width: " << msg->info.width << std::endl;
+		std::cout <<"static_Height: " << msg->info.height << std::endl;
+
+		std::cout << "static_X origin:" << msg->info.origin.position.x << std::endl;
+		std::cout << "static_Y origin:" << msg->info.origin.position.y << std::endl;
+		std::cout <<"static_Resolution: " << msg->info.resolution << std::endl;		
 
 
-return;
+		// Copy Data;
+		static_map_grid = (*msg);
+		static_map_grid.header.stamp =  ros::Time::now	();
+		static_map_grid.header.frame_id = "map"; 
+
+		return;
 
 }
 
+void GridMap::sensor_callback(const sensor_msgs::Imu::ConstPtr& msg)
+{
 
+	//	robot_world_theta_pos = msg->orientation.z;// - origin_y;	
+
+
+
+}
+
+//mk
 void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+{
+		
+		// dynamic_map_grid.info.width= 140;
+		// dynamic_map_grid.info.height= 140;
+		// dynamic_map_grid.info.resolution=0.05;
+		// dynamic_map_grid.info.origin.position.x=-4.5;
+		// dynamic_map_grid.info.origin.position.y=-4.5;
+		// dynamic_map_grid.data.resize(140*140);
+
+		dynamic_map_grid.info.width= 140;
+		dynamic_map_grid.info.height= 140;
+		dynamic_map_grid.info.resolution=0.05;
+		dynamic_map_grid.info.origin.position.x=msg->info.origin.position.x;
+		dynamic_map_grid.info.origin.position.y=msg->info.origin.position.y;
+		dynamic_map_grid.data.resize(140*140);
+		
+		for(int i(0);i<msg->data.size();i++)
+			dynamic_map_grid.data[i]=msg->data[i];
+
+		std::cout <<"dynamic_Width: " << msg->info.width << std::endl;
+		std::cout <<"dynamic_Height: " << msg->info.height << std::endl;
+		std::cout << "dynamic_X origin:" << msg->info.origin.position.x << std::endl;
+		std::cout << "dynamic_Y origin:" << msg->info.origin.position.y << std::endl;
+		std::cout <<"dynamic_Resolution: " << msg->info.resolution << std::endl;		
+
+
+		feature_map_grid.info.width=3;
+		feature_map_grid.info.height=3;
+		feature_map_grid.info.resolution=0.75;
+		
+		float origin_x= (-1.5)*feature_map_grid.info.resolution;           
+		float origin_y= (-1.5)*feature_map_grid.info.resolution;
+		float origin_rotated_vector_pos_x=cos(0)*origin_x-sin(0)*origin_y;
+		float origin_rotated_vector_pos_y= sin(0)*origin_x+cos(0)*origin_y;
+
+		feature_map_grid.info.origin.position.x=origin_rotated_vector_pos_x;
+		feature_map_grid.info.origin.position.y=origin_rotated_vector_pos_y;
+
+		//Initialize constants for calculating width and height
+		float smallwindow_res= 0.05;
+		int width_ratio_cons= 15;
+		int height_ratio_cons=15;
+		
+
+		std::map<int,int> occupancyCountMap;
+		std::vector<double> x_pos_set;
+		std::vector<double> y_pos_set;
+
+		std::vector< std::vector<double> > x_pos_set_dyn;
+		std::vector< std::vector<double> > y_pos_set_dyn;
+		std::vector<int> map_idset;
+		
+		x_pos_set_dyn.resize(9);
+		y_pos_set_dyn.resize(9);
+
+		float global_pos_x=0.0;
+		float global_pos_y=0.0;
+
+		//current robot position
+		int numcount=0;
+		int mapidx=0;
+		//check occupancy from dynamic map___
+		for(int j(0);j<feature_map_grid.info.height;j++)
+			for(int i(0); i<feature_map_grid.info.width;i++)
+			{
+				int feature_map_idx=j*feature_map_grid.info.height+i;
+
+				float robot_pos_x = robot_world_x_pos;				//global_pos_yal fame
+				float robot_pos_y = robot_world_y_pos;				//global fame
+				double robot_theta = robot_world_theta_pos; 		//Updated in jointstatescallbackfunction()
+				//float robot_theta = 0.315231; //Updated in jointstatescallbackfunction()
+
+					
+				float vector_pos_x= (-0.5*feature_map_grid.info.width+i)*feature_map_grid.info.resolution;           
+				float vector_pos_y= (-0.5*feature_map_grid.info.width+j)*feature_map_grid.info.resolution;
+
+				float rotated_vector_pos_x=cos(robot_theta)*vector_pos_x-sin(robot_theta)*vector_pos_y;
+				float rotated_vector_pos_y=sin(robot_theta)*vector_pos_x+cos(robot_theta)*vector_pos_y;
+
+				global_pos_x=robot_pos_x+rotated_vector_pos_x;
+				global_pos_y=robot_pos_y+rotated_vector_pos_y;
+
+				//ROS_INFO("coord x : %.3lf , coord y : %.3lf theta : %.3lf \n",robot_pos_x,robot_pos_y,robot_theta);
+				x_pos_set.push_back(global_pos_x);
+				y_pos_set.push_back(global_pos_y);
+
+				numcount=0;
+				for(int column_j(0);column_j<height_ratio_cons;column_j++)
+				 	for(int row_i(0);row_i<width_ratio_cons;row_i++)
+				 	{
+				 		//float SM_left_corner_x=global_pos_x;
+				 		//float SM_left_corner_y=global_pos_y;	
+				 		float SM_move_x=row_i*smallwindow_res;
+				 		float SM_move_y=column_j*smallwindow_res;
+
+				 		float SM_rotated_vector_pos_x= cos(robot_theta)*SM_move_x-sin(robot_theta)*SM_move_y;
+						float SM_rotated_vector_pos_y= sin(robot_theta)*SM_move_x+cos(robot_theta)*SM_move_y;
+
+						float SM_global_pos_x=global_pos_x+SM_rotated_vector_pos_x;
+						float SM_global_pos_y=global_pos_y+SM_rotated_vector_pos_y;		
+
+						int dyn_map_idx=globalcoord_To_Dyn_map_index(SM_global_pos_x,SM_global_pos_y);
+						//ROS_INFO("coord x %.3lf, coord y %.3lf, map index : %d\n",SM_global_pos_x,SM_global_pos_y,dyn_map_idx);
+						x_pos_set_dyn[mapidx].push_back(SM_global_pos_x);
+						y_pos_set_dyn[mapidx].push_back(SM_global_pos_y);
+
+						if(mapidx==7)
+							map_idset.push_back(dyn_map_idx);
+
+						//ROS_INFO("coord x, coord y, map index : %d\n",dyn_map_idx);
+						float temp_occupancy= msg->data[dyn_map_idx];
+						 if(temp_occupancy>0)
+						 	numcount++;
+				 	}
+				 
+				 	occupancyCountMap[feature_map_idx]=numcount;
+				 	mapidx++;
+			 }
+
+		 std::map<int,int>::iterator mapiter;
+		 for(mapiter=occupancyCountMap.begin();mapiter!=occupancyCountMap.end();mapiter++)
+		 	ROS_INFO("map index : %d, counts : %d \n",mapiter->first,mapiter->second);
+			
+
+		int datasize=9;
+		map_free_cell_list = make_cell_list_marker(FREE_CELL);
+
+		for(size_t kk = 0; kk < 9; kk++){
+			geometry_msgs::Point cell_loc;
+
+			cell_loc.x = x_pos_set[kk];
+			cell_loc.y = y_pos_set[kk];
+			cell_loc.z = 0.2;
+			map_free_cell_list.points.push_back(cell_loc);
+
+			}
+
+			geometry_msgs::Point cell_loc2;
+			cell_loc2.x = robot_world_x_pos;
+			cell_loc2.y = robot_world_x_pos;
+			cell_loc2.z = 0.2;
+
+			map_free_cell_list.points.push_back(cell_loc2);				
+			cell_array.markers.push_back(map_free_cell_list);
+
+			//For checking 
+			//  //map_free_cell_list_dyn= make_cell_list_marker(2);
+			// for(int m(0);m<9;m++){
+			// for(size_t dyn_i(0);dyn_i<15*15;dyn_i++ )
+			// {
+			// 	geometry_msgs::Point cell_loc_dyn;
+			// 	cell_loc_dyn.x = x_pos_set_dyn[m][dyn_i];
+			// 	cell_loc_dyn.y = y_pos_set_dyn[m][dyn_i];
+			// 	cell_loc_dyn.z = 0.1;
+			// 	// ROS_INFO("coord x %.3lf, coord y %.3lf, map index : \n",x_pos_set_dyn[dyn_i],y_pos_set_dyn[dyn_i]);
+			// 	map_free_cell_list.points.push_back(cell_loc_dyn);
+			// }
+			// }
+			// cell_array.markers.push_back(map_free_cell_list);
+
+
+		feature_map_grid.data.resize(datasize);
+		for(int i(0);i<datasize;i++)
+		{	
+			feature_map_grid.data[i] = occupancyCountMap[i];
+		}	
+
+
+		feature_map_grid.header.stamp =  ros::Time::now();
+		feature_map_grid.header.frame_id = "base_link"; 
+		feature_map_pub.publish(feature_map_grid);
+
+		//check for index or dynamic map
+		for(int k(0);k<map_idset.size();k++)
+			dynamic_map_grid.data[map_idset[k]]=50;
+		 dynamic_map_grid.header.stamp =  ros::Time::now();
+		 dynamic_map_grid.header.frame_id = "map"; 
+	
+
+		renew_dyn_grid_pub.publish(dynamic_map_grid);
+
+		return;
+}
+
+
+// void GridMap::Make_feature_from_dynamicobs(){
+
+
+	
+
+
+// }
+
+
+void GridMap::static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg)
 {
 
 
 
-return;
+
+
 }
+
+int GridMap::globalcoord_To_Dyn_map_index(float x_pos, float y_pos)
+{
+	float map_width=140;
+	float map_height=140;
+	float map_resolution=0.05;
+
+
+	float map_origin_left_corner_x=dynamic_map_grid.info.origin.position.x;
+	float map_origin_left_corner_y=dynamic_map_grid.info.origin.position.y;
+
+	float dist_x= x_pos-map_origin_left_corner_x;
+	float dist_y= y_pos-map_origin_left_corner_y;
+
+	int map_coord_i=floor(dist_x/map_resolution);
+	int map_coord_j=floor(dist_y/map_resolution);
+
+	int map_index=map_width*map_coord_j+map_coord_i;
+
+	return map_index;
+
+}
+
 
 
 
 void GridMap::joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg){
 	
-	// float robot_x = msg->pose.pose.position.x;// - origin_x;
-	// float robot_y = msg->pose.pose.position.y;// - origin_y;	
+	float robot_x = msg->pose.pose.position.x;// - origin_x;
+	float robot_y = msg->pose.pose.position.y;// - origin_y;	
+	float robot_theta = msg->pose.pose.orientation.z;// - origin_y;	//this is not exact=>sensor_imu
 
-	// robot_world_x_pos = robot_x;
-	// robot_world_y_pos = robot_y;
+	//ROS_INFO("base_x: %.3lf , _y : %.3lf, theta : %.3lf \n",robot_x,robot_y,robot_theta);
+	robot_world_x_pos = robot_x;
+	robot_world_y_pos = robot_y;
+	
+	robot_world_theta_pos=asin(robot_theta)*2;
+	ROS_INFO("robot_theta : %.3lf \n ", robot_world_theta_pos);
 
-	// for(size_t i = 0; i < index_of_robot_occ_cells.size(); i++){
-	// 	int cell_index = index_of_robot_occ_cells[i];		
-	// 	data[cell_index].cell_type = FREE_CELL;
-	// }
+	for(size_t i = 0; i < index_of_robot_occ_cells.size(); i++){
+		int cell_index = index_of_robot_occ_cells[i];		
+		data[cell_index].cell_type = FREE_CELL;
+	}
 
-	// index_of_robot_occ_cells.clear();
-
+	 index_of_robot_occ_cells.clear();
 	// bounding_box_to_occupany(robot_x, robot_y, TRIKEY_SIDE_WIDTH, TRIKEY_SIDE_WIDTH, ROBOT_OCCUPIED);
 	// construct_robot_cells();
+
 }
 
 
@@ -1420,7 +1484,7 @@ void GridMap::CBA_publish(){
 	// assume everything is free.
 	// Assign robots, humans, and obstacle types.
 
-	classifier_hsr::CBA_NavInfo nav_info_msg;
+	cba_msgs::CBA_NavInfo nav_info_msg;
 	nav_info_msg.header.stamp = ros::Time();
 	nav_info_msg.width = num_of_cells_width;
 	nav_info_msg.height = num_of_cells_height;
@@ -1549,10 +1613,13 @@ int main(int argc, char **argv)
 
   gridmap.cell_array_pub = gridmap.node.advertise<visualization_msgs::MarkerArray>( "grid/cell_array_markers", 1 );
   gridmap.robot_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/robot_marker", 1 );
-  gridmap.CBA_grid_pub = gridmap.node.advertise<classifier_hsr::CBA_NavInfo>("/CBA_grid_occ_topic", 0);
+  gridmap.CBA_grid_pub = gridmap.node.advertise<cba_msgs::CBA_NavInfo>("/CBA_grid_occ_topic", 0);
+  gridmap.renew_dyn_grid_pub=gridmap.node.advertise<nav_msgs::OccupancyGrid>("grid/renew_dyn_map_cells", 1);
 
   gridmap.human_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/human_cells", 1 );
   gridmap.trikey_state_sub = gridmap.node.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, boost::bind(&GridMap::joint_state_callback, &gridmap, _1));
+  gridmap.sensor_sub = gridmap.node.subscribe<sensor_msgs::Imu>("/hsrb/base_imu/data", 10, boost::bind(&GridMap::sensor_callback, &gridmap, _1));
+
 
   // gridmap.human_bounding_boxes_sub = gridmap.node.subscribe<visualization_msgs::MarkerArray>("/human_boxes_3D", 10, boost::bind(&GridMap::human_detection_callback, &gridmap, _1));
   // gridmap.detected_humans_number_sub = gridmap.node.subscribe<std_msgs::Int8>("/detection/number_of_detected_humans", 10, boost::bind(&GridMap::number_detected_callback, &gridmap, _1));
@@ -1560,10 +1627,16 @@ int main(int argc, char **argv)
   gridmap.features_viz_pub = gridmap.node.advertise<visualization_msgs::MarkerArray> ("grid/feature_cells", 1);
 
   // //added by Mk
-  gridmap.static_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/static_obstacle_map", 10, boost::bind(&GridMap::static_obs_ref_callback, &gridmap, _1));
-  gridmap.dynamic_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/dynamic_obstacle_map", 10, boost::bind(&GridMap::dynamic_obs_ref_callback, &gridmap, _1));
+  gridmap.feature_map_pub= gridmap.node.advertise<nav_msgs::OccupancyGrid>("grid/feature_map_cells", 1);
+  gridmap.static_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/static_obstacle_map_ref", 10, boost::bind(&GridMap::static_obs_ref_callback, &gridmap, _1));
+  gridmap.dynamic_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/dynamic_obstacle_map_ref", 10, boost::bind(&GridMap::dynamic_obs_ref_callback, &gridmap, _1));
+  gridmap.gridcell_sub=gridmap.node.subscribe<nav_msgs::GridCells>("/base_path_planner/inflated_static_obstacle_map", 10, boost::bind(&GridMap::static_gridcell_callback, &gridmap, _1));
+
+
 	
+
   ros::Rate r(10); 
+
   int counter = 0;
 
   while (ros::ok())
@@ -1576,9 +1649,9 @@ int main(int argc, char **argv)
 
 	// gridmap.broadcast_tf_world_to_map();
 	// //gridmap.publish_orig_proj_map();
-  	// 	gridmap.publish();
- 	// gridmap.CBA_publish();
- 	//gridmap.calculate_robotEnvFeatures();
+  	 	gridmap.publish();
+ //  	//gridmap.CBA_publish();
+ //  	gridmap.calculate_robotEnvFeatures();
 	// gridmap.visualize_robotEnvFeatures();
 	r.sleep();
   }

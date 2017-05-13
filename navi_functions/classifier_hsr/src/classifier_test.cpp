@@ -5,7 +5,7 @@
 #include "geometry_msgs/Pose2D.h"
 #include <Eigen/Dense>
 #include <sstream>
-#include "classifier_hsr/CBA_NavInfo.h"
+#include "cba_msgs/CBA_NavInfo.h"
 #include <boost/thread/thread.hpp>
 
 
@@ -34,8 +34,8 @@ char sz[18];
 
 void CmdStrCallback(const std_msgs::String::ConstPtr& msg);
 void CmdIntCallback(const std_msgs::Int8::ConstPtr& msg);
-void NavInfo_Callback(const classifier_hsr::CBA_NavInfo::ConstPtr& msg);
-void NavInfo_Callback(const classifier_hsr::CBA_NavInfo::ConstPtr& msg)
+void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg);
+void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
 {
   int width = msg->width;
   int height = msg->height;  
@@ -187,7 +187,7 @@ int main(int argc, char **argv)
    //Subscriber
    cmd_sub  = n.subscribe<std_msgs::String>("/CBA_cmd_str", 50,CmdStrCallback); 
    cmd_sub2 = n.subscribe<std_msgs::Int8>("/CBA_cmd_int", 50,CmdIntCallback);
-   grid_sub = n.subscribe<classifier_hsr::CBA_NavInfo>("/CBA_grid_occ_topic", 20, NavInfo_Callback);  
+   grid_sub = n.subscribe<cba_msgs::CBA_NavInfo>("/CBA_grid_occ_topic", 20, NavInfo_Callback);  
    matlabgoal_sub= n.subscribe<geometry_msgs::Pose2D>("/Matlab_goal", 10, Goal_Matlab_Callback);
    ros::Rate loop_rate(20);
 

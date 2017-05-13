@@ -44,18 +44,19 @@
   <build_depend>geometry_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>  
-  <build_depend>classifier_hsr</build_depend>
+  <build_depend>cba_msgs</build_depend>
   <build_depend>rosbag</build_depend>  
   <build_depend>roslib</build_depend>    
   <build_depend>message_generation</build_depend>
   <build_depend>tf</build_depend>
+
 
   <run_depend>tf</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>geometry_msgs</run_depend>  
   <run_depend>sensor_msgs</run_depend>  
   <run_depend>nav_msgs</run_depend>
-  <run_depend>classifier_hsr</run_depend>
+  <run_depend>cba_msgs</run_depend>  
   <run_depend>rosbag</run_depend>  
   <run_depend>roslib</run_depend>    
   <run_depend>message_runtime</run_depend>  

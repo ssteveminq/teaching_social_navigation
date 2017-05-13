@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include "ros/ros.h"
 #include <ros/package.h>
-#include "classifier_hsr/CBA_NavInfo.h"
+#include "cba_msgs/CBA_NavInfo.h"
 
 
 #define Grid_STEP 10
