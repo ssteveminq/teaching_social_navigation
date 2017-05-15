@@ -155,6 +155,7 @@ class MDPManager
 	int  scaling=12;
 	nav_msgs::OccupancyGrid Scaled_static_map;
 	nav_msgs::OccupancyGrid Scaled_static_map_path;
+	
 
 	
  	//functions
@@ -191,6 +192,7 @@ class MDPManager
  	void 			Global2MapCoord(const vector<double>& _globalcoord, vector<int>& MapCoord);
  	void    		CoordinateTransform_Rviz_Grid_Start(double _x, double _y);
 	void    		CoordinateTransform_Rviz_Grid_Goal(double _x, double _y);
+	void            Mapcoord2GlobalCoord(const vector<int>& _Mapcoord, vector<double>& GlobalCoord);
 	
 };
 

@@ -11,6 +11,7 @@ Panels:
         - /Path1
         - /MarkerArray1
         - /GridCells1
+        - /Map4
       Splitter Ratio: 0.5
     Tree Height: 855
   - Class: rviz/Selection
@@ -378,7 +379,7 @@ Visualization Manager:
       Radius: 0.03
       Shaft Diameter: 0.1
       Shaft Length: 0.1
-      Topic: /mdp_path
+      Topic: /mdp_path_2
       Unreliable: false
       Value: true
     - Class: rviz/Marker
@@ -404,6 +405,15 @@ Visualization Manager:
       Name: GridCells
       Topic: /base_path_planner/inflated_static_obstacle_map
       Value: true
+    - Alpha: 0.7
+      Class: rviz/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: true
+      Name: Map
+      Topic: /scaled_static_map_path
+      Unreliable: false
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -428,22 +438,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 14.4327
+      Distance: 14.561
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 0.0758957
-        Y: 1.85957
-        Z: -1.28611
+        X: 5.71868
+        Y: 0.534456
+        Z: -0.736673
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.5648
+      Pitch: 1.1898
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.07042
+      Yaw: 3.08542
     Saved: ~
 Window Geometry:
   Displays:
@@ -461,5 +471,5 @@ Window Geometry:
   Views:
     collapsed: false
   Width: 2379
-  X: 371
-  Y: 226
+  X: 361
+  Y: 216

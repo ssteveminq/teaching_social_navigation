@@ -906,6 +906,17 @@ int MDPManager::FindMaxIdx(vector<double> dataset)
 	return maxIndex;
 
 }
+void MDPManager::Mapcoord2GlobalCoord(const vector<int>& _Mapcoord, vector<double>& GlobalCoord)
+{
+
+	GlobalCoord.resize(2);
+	//globalCoord origin x, y;
+	GlobalCoord[0]=Scaled_static_map.info.origin.position.x+Scaled_static_map.info.resolution*_Mapcoord[0];
+	GlobalCoord[1]=Scaled_static_map.info.origin.position.y+Scaled_static_map.info.resolution*_Mapcoord[1];
+
+}
+
+
 
 //get action(best) in Matlab
 void MDPManager::getMaxValueAction(int x_pos, int y_pos,map<int,double>& maxmap)
@@ -975,12 +986,16 @@ void MDPManager::generatePath()
 	vector<double> t_values;
 	vector<double> x_values;
 	vector<double> y_values;
+	vector<double> global_coords;
 
 	//double* = new double [13]
 
-	x_values.push_back(m_Start[0]);
-	y_values.push_back(m_Start[1]);
+	// x_values.push_back(m_Start[0]);
+	// y_values.push_back(m_Start[1]);
 
+	Mapcoord2GlobalCoord(m_Start,global_coords);
+	x_values.push_back(global_coords[0]);
+	y_values.push_back(global_coords[1]);
 
 	cout<<"cur st id : "<<cur_stid<<endl;
 	MDPPath.push_back(cur_stid);
@@ -991,13 +1006,14 @@ void MDPManager::generatePath()
 		for(int i(0);i<2;i++)
 			cur_pos[i]+=ActionCC[PolicyNum[cur_stid]][i];
 
-		x_values.push_back(cur_pos[0]);
-		y_values.push_back(cur_pos[1]);
+		Mapcoord2GlobalCoord(cur_pos,global_coords);
+		ROS_INFO("cur pos Id : %d, x:  %d, y // global x : %.3lf , global y : %.3lf \n",cur_pos[0], cur_pos[1],global_coords[0],global_coords[1]);
+
+		x_values.push_back(global_coords[0]);
+		y_values.push_back(global_coords[1]);
 
 		cur_stid=Coord2CellNum(cur_pos);
 		MDPPath.push_back(cur_stid);
-
-
 
 		//ROS_INFO("Id : %d, x:  %d, y : %d \n",cur_stid, cur_pos);
 
@@ -1006,89 +1022,80 @@ void MDPManager::generatePath()
 	}
 
 	//Making Spline path=======================
-	// int data_size=x_values.size();
-	// for(int k=0;k<data_size;k++)
-	// 	//printf("spline path index : %d, x_values : %lf , y values : %lf \n", k,x_values[k],y_values[k]);
+	int data_size=x_values.size();
+	//for(int k=0;k<data_size;k++)
+		//printf("spline path index : %d, x_values : %lf , y values : %lf \n", k,x_values[k],y_values[k]);
 
-	// //Making t-vetors;
-	// t_values.resize(x_values.size());
-	// //t_values[0]=0;
-	// double time_length=1.0;
-	// double time_const=(time_length)/data_size;
-	// for(int k(0);k<data_size;k++)
-	// 	t_values[k]=k*time_const;
+	//Making t-vetors;
+	t_values.resize(x_values.size());
+	//t_values[0]=0;
+	double time_length=1.0;
+	double time_const=(time_length)/data_size;
+	for(int k(0);k<data_size;k++)
+		t_values[k]=k*time_const;
 	
+	m_CubicSpline_x = new srBSpline;
+	m_CubicSpline_x->_Clear();
 
+	m_CubicSpline_y = new srBSpline;
+	m_CubicSpline_y->_Clear();
 
-	// m_CubicSpline_x = new srBSpline;
-	// m_CubicSpline_x->_Clear();
+	vector<int> Spline_x;
+	vector<int> Spline_y;
+	m_CubicSpline_x->CubicSplineInterpolation(t_values,x_values,x_values.size());
+	m_CubicSpline_y->CubicSplineInterpolation(t_values,y_values,y_values.size());
 
-	// m_CubicSpline_y = new srBSpline;
-	// m_CubicSpline_y->_Clear();
+	int path_size=6;	
+	double const_path=(time_length)/ path_size ;
 
-	// vector<int> Spline_x;
-	// vector<int> Spline_y;
-	// m_CubicSpline_x->CubicSplineInterpolation(t_values,x_values,x_values.size());
-	// m_CubicSpline_y->CubicSplineInterpolation(t_values,y_values,y_values.size());
+	Spline_x.push_back(x_values[0]);
+	Spline_y.push_back(y_values[0]);
 
-	// int path_size=4;	
-	// double const_path=(time_length)/ path_size ;
+	double ret_x=0.0;
+	double ret_y=0.0;
+	double t_idx=0.0;
+	 for(int j(0);j<path_size;j++){
+  	   t_idx=(j+1)*const_path;
+       m_CubicSpline_x->getCurvePoint(ret_x,t_idx);
+       m_CubicSpline_y->getCurvePoint(ret_y,t_idx);
 
-	// Spline_x.push_back(x_values[0]);
-	// Spline_y.push_back(y_values[0]);
-
-	// double ret_x=0.0;
-	// double ret_y=0.0;
-	// double t_idx=0.0;
-	//  for(int j(0);j<path_size;j++){
- //  	   t_idx=(j+1)*const_path;
- //       m_CubicSpline_x->getCurvePoint(ret_x,t_idx);
- //       m_CubicSpline_y->getCurvePoint(ret_y,t_idx);
-
- //       Spline_x.push_back(ret_x);
- //       Spline_y.push_back(ret_y);
- //     }
+       Spline_x.push_back(ret_x);
+       Spline_y.push_back(ret_y);
+     }
 
      //Publish SPline Path
- //  	nav_msgs::Path path, smoothedPath;
- //  	path.header.frame_id = "map";
- //  	smoothedPath.header.frame_id = "map";
- //  	geometry_msgs::PoseStamped pose;
-	// // pose.header.frame_id = "map_local";
+  	nav_msgs::Path path, smoothedPath;
+  	path.header.frame_id = "map";
+  	smoothedPath.header.frame_id = "map";
+  	geometry_msgs::PoseStamped pose;
+	// pose.header.frame_id = "map_local";
 
-	//  for (int i = 0; i < path_size; i++)
- // 	 {
+	 for (int i = 0; i < Spline_x.size(); i++)
+ 	 {
 	    
-	//     pose.pose.position.x=Spline_x[i]*Grid_STEP+8-0.5*Grid_STEP;
-	//    	pose.pose.position.y=Spline_y[i]*Grid_STEP+8-0.5*Grid_STEP;
-	//     // pose.pose.position.x=Spline_x[i]*0.25-3.5-0.5*0.25;
-	//    	// pose.pose.position.y=Spline_y[i]*0.25-3.5-0.5*0.25;
-	//    	printf("spline path2 index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
-	//    	pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
-	//    	smoothedPath.poses.push_back(pose);
+	    pose.pose.position.x=Spline_x[i];
+	   	pose.pose.position.y=Spline_y[i];
+	    // pose.pose.position.x=Spline_x[i]*0.25-3.5-0.5*0.25;
+	   	// pose.pose.position.y=Spline_y[i]*0.25-3.5-0.5*0.25;
+	   	printf("spline path2 index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
+	   	pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
+	   	smoothedPath.poses.push_back(pose);
 	    
-	//    	// printf("--------------------------------------------");
+	   	// printf("--------------------------------------------");
 
-	//     pose.pose.position.x = -Spline_x[i]*Grid_STEP-8-0.5*Grid_STEP;
-	//     pose.pose.position.y = -Spline_y[i]*Grid_STEP-8-0.5*Grid_STEP;
-	//     printf("spline path index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
-	//     pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
-	//     path.poses.push_back(pose);
+	    pose.pose.position.x = -Spline_x[i];
+	    pose.pose.position.y = -Spline_y[i];
+	    printf("spline path index : %d, x coord : %lf , y coord : %lf \n", i,pose.pose.position.x,pose.pose.position.y);
+	    pose.pose.orientation = tf::createQuaternionMsgFromYaw(0.05);
+	    path.poses.push_back(pose);
 
-	// }
-	//  SplinePath_pub.publish(path);
-	//  SplinePath_pub2.publish(smoothedPath);
+	}
+	 SplinePath_pub.publish(path);
+	 SplinePath_pub2.publish(smoothedPath);
 
 	 // Publish static map_path
 
-	nav_msgs::OccupancyGrid Scaled_static_map_path;
-
-	Scaled_static_map_path.info.width=32;
-	Scaled_static_map_path.info.height= 32;
-	Scaled_static_map_path.info.resolution=0.5;
-	Scaled_static_map_path.info.origin.position.x=-4;
-	Scaled_static_map_path.info.origin.position.y=-4;
-	Scaled_static_map_path.data.resize(32*32);
+	
 	for(int j(0);j<Scaled_static_map_path.data.size();j++)
 	 {	
 
@@ -1097,7 +1104,7 @@ void MDPManager::generatePath()
 
 
 	 for(int k(0); k<MDPPath.size();k++)
-	 	Scaled_static_map_path.data[MDPPath[k]]=30;
+	 	Scaled_static_map_path.data[MDPPath[k]]=90;
 
 
 	 Scaled_static_map_path.header.stamp =  ros::Time::now();
@@ -1113,4 +1120,6 @@ void MDPManager::generatePath()
 	// ROS_INFO("publish");
 
 }	
+
+
 

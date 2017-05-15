@@ -1,1 +1,1 @@
-roslaunch classifier gui_test.launch
+roslaunch classifier_hsr gui_test.launch

@@ -25,8 +25,9 @@ while running == False:
 
 # fill ROS message
 tw = geometry_msgs.msg.Twist()
-tw.linear.x = 0.0
-tw.angular.z=0.2
+tw.linear.x = -1.0
+tw.linear.y = 1.0
+tw.angular.z=0.0
 
 # publish ROS message
 pub.publish(tw)

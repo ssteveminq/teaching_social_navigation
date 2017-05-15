@@ -6,28 +6,21 @@ import actionlib
 import control_msgs.msg
 import controller_manager_msgs.srv
 import trajectory_msgs.msg
+import geometry_msgs.msg
+import controller_manager_msgs.srv
 from std_msgs.msg import String
 from std_msgs.msg import Int8
-
-
 
 
 class BaseMoveCBA(object):
 	def __init__(self, wait=0.0):
 		# initialize action client
+		self.vel_pub = rospy.Publisher('/hsrb/command_velocity', geometry_msgs.msg.Twist, queue_size=10)
 		rospy.Subscriber("/CBA_cmd_int", Int8, self.intcallback)
-		self.cli = actionlib.SimpleActionClient('/hsrb/omni_base_controller/follow_joint_trajectory', control_msgs.msg.FollowJointTrajectoryAction)
-		# wait for the action server to establish connection
-		self.goal = control_msgs.msg.FollowJointTrajectoryGoal()
-		self.traj = trajectory_msgs.msg.JointTrajectory()
-		self.traj.joint_names = ["odom_x", "odom_y", "odom_t"]
-		self.p = trajectory_msgs.msg.JointTrajectoryPoint()
-		self.p.positions = [1, 0, 0.8]
-		self.p.velocities = [0, 0, 0]
-		self.p.time_from_start = rospy.Time(9)
-		self.traj.points = [self.p]
-		self.goal.trajectory = self.traj
-		self.cli.wait_for_server()
+		self.tw = geometry_msgs.msg.Twist()
+
+		while self.vel_pub.get_num_connections() == 0:
+    			rospy.sleep(0.1)
 
 
 	def listener(self,wait=0.0):
@@ -51,28 +44,18 @@ class BaseMoveCBA(object):
 	    
 	       # command = data.data
 		if data.data == 1:
-		    self.p.positions = [0, 0, 0.0]
-		    self.p.velocities = [1, 0, 0]
+			self.tw.angular.z = 0.8
 		elif data.data == 2:
-		    self.p.positions = [0, 0, 0.0]
-		    self.p.velocities = [0, 1, 0]
-    	# elif data.data == 3:
+		    self.tw.linear.x = 1.0
+		elif data.data == 3:
+		    self.tw.angular.z = -0.8
+		# elif data.data == 3:
 	    # 	self.p.positions = [0, 0, 0]
 	    # 	self.p.velocities = [0, 0, 1.0]
 		else:
-		    self.p.positions = [1, 1, 0.0]
-		    self.p.velocities = [0, 0, 0]
-		self.traj.points = [self.p]
-		self.goal.trajectory = self.traj
-
-	# send message to the action server
-		self.cli.send_goal(self.goal)
-
-	# wait for the action server to complete the order
-		self.cli.wait_for_result()
-
-
-
+			self.tw.angular.z = 0.0
+		
+		self.vel_pub.publish(self.tw)
 
 
 
