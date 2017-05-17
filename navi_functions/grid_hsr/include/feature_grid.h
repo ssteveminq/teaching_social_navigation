@@ -147,7 +147,6 @@ public:
 	ros::Subscriber gridcell_sub;
 	ros::Subscriber sensor_sub;
 
-
 	ros::Subscriber human_bounding_boxes_sub;	
 	ros::Subscriber detected_humans_number_sub;
 	ros::Publisher  human_cells_pub;
@@ -162,6 +161,8 @@ public:
 
 	int num_of_cells_width;
 	int num_of_cells_height;	
+
+	int robot_pos_id;
 
 
 	float origin_x;
@@ -235,6 +236,8 @@ public:
 	nav_msgs::OccupancyGrid proj_map_grid; // The original map
 	nav_msgs::OccupancyGrid feature_map_grid;
 
+	std::vector<int> state_feature;
+
     // Functions
     visualization_msgs::Marker make_cell_marker(int index, int grid_x_index, int grid_y_index, int cell_color);
 	visualization_msgs::Marker make_cell_list_marker(int occupancy_type);
@@ -271,9 +274,8 @@ public:
     void publish();
 	void publish_orig_proj_map();
 	void CBA_publish();
-
-
-	int globalcoord_To_Dyn_map_index(float x_pos, float y_pos);
+	int  globalcoord_To_Dyn_map_index(float x_pos, float y_pos);
+	int  globalcoord_To_SScaled_map_index(float x_pos,float y_pos);
 
     // Constructor Destructor Functions
 	GridMap();

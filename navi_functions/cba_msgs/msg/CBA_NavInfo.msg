@@ -15,3 +15,4 @@ float64 unit_y_to_human
 int8 human_present
 float64 unit_base_link_x
 float64 unit_base_link_y
+int32 int_robot_id

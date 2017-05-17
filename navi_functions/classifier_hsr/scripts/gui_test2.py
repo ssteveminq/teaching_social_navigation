@@ -81,7 +81,7 @@ class SpeechGui(QtGui.QWidget):
 
       # Get commands from the listener
       self.keywords = ["BAD", "GOOD", "Save","Move"]#rospy.get_param(SpeechListener.KEYWORDS_PARAM, dict()).values()
-      self.commands = ["Bad", "Good", "Turn Left", "Move", "Auto", "Turn Right","Save", "Load"  ,"Go Forward", "Stop", "Update", "Clear Data"] #[val for sublist in self.keywords for val in sublist]
+      self.commands = ["Bad", "Good", "Turn Left", "Predict", "Auto", "Turn Right","Save", "Load"  ,"Go Forward", "Move", "Update", "Clear Data"] #[val for sublist in self.keywords for val in sublist]
       
       # self.commands.sort()
  
@@ -108,7 +108,6 @@ class SpeechGui(QtGui.QWidget):
       # # Create the publisher to publish the commands to
       # self.pub = rospy.Publisher("CBA_cmd_str", String, queue_size=1)
       self.pub2 = rospy.Publisher("CBA_cmd_int", Int8, queue_size=1)
-
       rospy.loginfo("Finished initializing speech GUI")
 
   # Button handler after its clicked
@@ -117,7 +116,7 @@ class SpeechGui(QtGui.QWidget):
       #print "you're here!"
       # # Publish everytime a command is selected from the combo box
       command = str(clicked_button.objectName())
-      if command =="Move": 
+      if command =="Predict": 
         num_cmd=10
       elif command =="Good":
         num_cmd=11
@@ -131,7 +130,7 @@ class SpeechGui(QtGui.QWidget):
         num_cmd=16
       elif command =="Clear Data":
         num_cmd=17
-      elif command =="Stop":
+      elif command =="Move":
         num_cmd=4
       elif command =="Turn Left":
         num_cmd=1
@@ -149,7 +148,6 @@ class SpeechGui(QtGui.QWidget):
         num_cmd=8
       else:
         num_cmd=0
-
     #  print command
      # print num_cmd
 

@@ -2,7 +2,6 @@
 
 
 
-
 MapParam::MapParam()
 {
     map_step=Grid_STEP;
@@ -11,12 +10,9 @@ MapParam::MapParam()
 	Num_grid_X=Grid_Num_X;
 	Num_grid_Y=Grid_Num_Y;
 	MapSize=Grid_Num_X*Grid_Num_Y;
-	
 	Cell_Info.resize(MapSize, 0);
 	OCC_Info.resize(MapSize, 0);
-	
 }
-
 
 MapParam::~MapParam()
 {
@@ -218,9 +214,10 @@ void MDPManager::Init()
 	 Path_Pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/path", 10);
 	 SplinePath_pub=  m_node.advertise<nav_msgs::Path>("mdp_path", 10, true);
 	 SplinePath_pub2=  m_node.advertise<nav_msgs::Path>("mdp_path_2", 10, true);
+	 UnitGoalVec_pub = m_node.advertise<std_msgs::Float32MultiArray>("/CBA_unit_goal", 10, true);
 	 Scaled_static_map_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_static_map", 10, true);
 	 Scaled_static_map_path_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_static_map_path", 10, true);
-
+	 MDPSol_pub= m_node.advertise<std_msgs::Int32MultiArray>("MDP/Solution", 10);
 
 	Scaled_static_map_path.info.width=32;
 	Scaled_static_map_path.info.height= 32;
@@ -231,12 +228,11 @@ void MDPManager::Init()
 
 }
 
-//function which relates to get origin w.r.t map (mdp)
+//function which relates to get origin w.r.t map (mdp)3232
 void MDPManager::CoordinateTransform_Rviz_Grid_Start(double _x, double _y)
 {
 	 cur_coord.resize(2,0);
 
-	
 	 //for case of using static map
 	double reference_origin_x =Scaled_static_map.info.origin.position.x;
 	double reference_origin_y =Scaled_static_map.info.origin.position.y;
@@ -252,6 +248,9 @@ void MDPManager::CoordinateTransform_Rviz_Grid_Start(double _x, double _y)
 
 	cur_coord[0]= (int) (temp_x/Grid_STEP);
  	cur_coord[1]= (int)(temp_y/Grid_STEP);
+
+
+
 
  	 return;
 }
@@ -284,9 +283,7 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
 {
 
 	printf("Receive point\n");
-
     GoalVector.resize(2,0);
-
     GoalVector[0]=msg->point.x;
 	GoalVector[1]=msg->point.y;
     // GoalVector[0]=msg->point.x-Map_orig_Vector[0];
@@ -305,29 +302,41 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
 	 CoordinateTransform_Rviz_Grid_Goal(GoalVector[0],GoalVector[1]);
 
 
-	 // printf(" cur x index is %d, cur y index is %d \n",cur_coord[0],cur_coord[1]);  
-  //    printf(" goal x index is %d, goal y index is %d \n",Goal_Coord[0],Goal_Coord[1]); 
-
-	// cur_coord[0]= (int)CurVector[0]/(0.25);
- //    cur_coord[1]= (int)CurVector[1]/(0.25);
-
-       // Global2MapCoord(CurVector,cur_coord);
-       // Global2MapCoord(GoalVector,Goal_Coord);
-
-
-     //  	Goal_Coord[0]= (int)GoalVector[0]/(0.25);
-   		// Goal_Coord[1]= (int)GoalVector[1]/(0.25);
-
- 
+	 //for MDP planner 
      updateMap(m_localoccupancy,cur_coord,Goal_Coord);
 
-      // printf("x index is %.3f, y index is %.3f \n",Goal_Coord[0],Goal_Coord[1]);  
-      m_boolSolve=true;
+    //Pulbish unitvector
+    std::vector<float> unitgoalvector(2,0.0);
+	unitgoalvector[0] = GoalVector[0]-CurVector[0];
+	unitgoalvector[1] = GoalVector[1]-CurVector[1];
+	float vector_norm=sqrt(unitgoalvector[0]*unitgoalvector[0]+unitgoalvector[1]*unitgoalvector[1]);
+	unitgoalvector[0] =unitgoalvector[0]/vector_norm;
+	unitgoalvector[1] =unitgoalvector[1]/vector_norm;
 
-      return;
+
+	std_msgs::Float32MultiArray unitgoal_msg;
+	unitgoal_msg.data.resize(unitgoalvector.size());
+	for(int i(0);i<unitgoalvector.size();i++)
+	unitgoal_msg.data[i] = unitgoalvector[i];
+	UnitGoalVec_pub.publish(unitgoal_msg);
+	ROS_INFO("clicked goal_uint goal x : %.3lf, y : %.3lf\n",unitgoalvector[0],unitgoalvector[1]);
+      // printf("x index is %.3f, y index is %.3f \n",Goal_Coord[0],Goal_Coord[1]);  
+    m_boolSolve=true;
+
+    return;
 }
 
+void MDPManager::MDPsolPublish()
+{
+	//  std_msgs::Int32MultiArray MDPsolution_msg;
+	
+	// MDPsolution_msg.data.resize(32*32); 
+	// for(int i(0);i<32*32;i++)
+	// 	MDPsolution_msg.data[i]=0.1*5*i;
+	// MDPSol_pub.publish(MDPsolution_msg);
 
+
+}
 
 void MDPManager::Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& msg)
 {
@@ -376,9 +385,6 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	// Scaled_static_map_path.info.origin.position.x=-4;
 	// Scaled_static_map_path.info.origin.position.y=-4;
 	//Scaled_static_map_path.data.resize(32*32);
-
-
-
 
 
 
@@ -1106,12 +1112,17 @@ void MDPManager::generatePath()
 	 for(int k(0); k<MDPPath.size();k++)
 	 	Scaled_static_map_path.data[MDPPath[k]]=90;
 
-
 	 Scaled_static_map_path.header.stamp =  ros::Time::now();
 	 Scaled_static_map_path.header.frame_id = "map"; 
      Scaled_static_map_path_pub.publish(Scaled_static_map_path);
 
-
+    //MDP solution publsih
+    std_msgs::Int32MultiArray MDPsolution_msg;
+	
+	MDPsolution_msg.data.resize(PolicyNum.size()); 
+	for(int i(0);i<PolicyNum.size();i++)
+		MDPsolution_msg.data[i]=PolicyNum[i];
+	MDPSol_pub.publish(MDPsolution_msg);
 
 	//Publish path after planning
 	// std_msgs::Int32MultiArray pathmap_msg;

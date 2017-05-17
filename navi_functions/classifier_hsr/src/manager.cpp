@@ -7,6 +7,7 @@ MapParam::MapParam()
 	m_cell_y_width=0.0;
 	Num_grid_X=Grid_Num_X;
 	Num_grid_Y=Grid_Num_Y;
+	robot_map_id=0;
 
 	NearestHuman_V.resize(2);
 	RobotHeading_V.resize(2);
@@ -53,7 +54,7 @@ void MapParam::set_Cell_Info(vector<int> _inputCellInfo)
 void MapParam::set_State_Type(vector<int> _State_Type)
 {
 	for(int i(0);i<_State_Type.size();i++)
-	State_Type[i]=_State_Type[i];
+		State_Type[i]=_State_Type[i];
 
 }
 
@@ -77,6 +78,11 @@ void MapParam::set_RobotHeading_V(vector<float> _RobotHeading_V)
 	RobotHeading_V[i]=_RobotHeading_V[i];
 }
 
+void MapParam::set_RobotId(int _robotid)
+{
+
+	robot_map_id=_robotid;
+}
 
 
 void MapParam::set_OCC_Info(vector<int> _inputOCCInfo)
@@ -110,6 +116,7 @@ void CBAManager::Init()
 	m_Start =vector<int>(2,0);
 	m_Goal  =vector<int>(2,0);
 	m_Robot  =vector<int>(2,0);
+	m_unitGoal=vector<float>(2,0.0);
 
     Desiredaction =0;
 
@@ -135,17 +142,20 @@ void CBAManager::Init()
 			TrainingDataState[i]=i;
 		}
 
-    Local_X_start=10;
-	Local_Y_start=90;
-	Local_X_end=159;
-	Local_Y_end=149;
-	Scale_constant=3;
+	storedFeaturevector.resize(Feature_dim,0.0);
+	robot_theta_yaw=0.0;
+
+ //    Local_X_start=10;
+	// Local_Y_start=90;
+	// Local_X_end=159;
+	// Local_Y_end=149;
+	// Scale_constant=3;
 
   //getMDPsolutionFile();
 
 	//Matlab_Pub  = n .advertise<matlab_msg::m_gridInfo>("/CBA2Matlab", 30);
 	//Trikey_Pubn = n2.advertise<matlab_msg::m_gridInfo>("/CBA2Matlab", 30);
-
+	
 	boolMatlabsendData=false;
 	boolAuto=false;
 }
@@ -171,6 +181,15 @@ CBAManager::~CBAManager()
 	
 
 }
+
+
+void CBAManager::IntializeROS_publisher()
+{
+	ros::NodeHandle  m_node; 
+	HSR_Pub =m_node.advertise<std_msgs::Int8>("/CBA_action_cmd", 30);
+
+}
+
 
 vector<int> CBAManager::Global2LocalCoord(vector<int> Global_coord)
 {
@@ -286,36 +305,114 @@ for(int i(0);i<8;i++)
 	ActionCC[i].resize(2);
 
 ActionCC[0][0]=1;   ActionCC[0][1]=0;
-ActionCC[1][0]=1;   ActionCC[1][1]=1;
+ActionCC[1][0]=1/sqrt(2);   ActionCC[1][1]=1/sqrt(2);
 ActionCC[2][0]=0;   ActionCC[2][1]=1;
-ActionCC[3][0]=-1;  ActionCC[3][1]=1;
+ActionCC[3][0]=-1/sqrt(2);  ActionCC[3][1]=1/sqrt(2);
 ActionCC[4][0]=-1;  ActionCC[4][1]=0;
-ActionCC[5][0]=-1;  ActionCC[5][1]=-1;
+ActionCC[5][0]=-1/sqrt(2);  ActionCC[5][1]=-1/sqrt(2);
 ActionCC[6][0]=0;   ActionCC[6][1]=-1;
-ActionCC[7][0]=1;   ActionCC[7][1]=-1;
+ActionCC[7][0]=1/sqrt(2);   ActionCC[7][1]=-1/sqrt(2);
 
 vector<double> innervector(8,0.0);
-
-double temp=0.0;
+float yaw_angle_deg=0.0;
+float temp=0.0;
+float temp_deg=0.0;
+float temp_headingangle=0.0;
 temp=sqrt(m_Goal[0]*m_Goal[0]+m_Goal[1]*m_Goal[1]);
-vector<double> unitgoal(2,0.0);
+vector<float> unitgoal(2,0.0);
 
-unitgoal[0]=m_Goal[0]/temp;
-unitgoal[1]=m_Goal[1]/temp;
+//find the unit vector w.r.t robot heading direction
+vector<float> robotheadingdirection(2,0.0);
+
+robotheadingdirection[0]=1.0;
+robotheadingdirection[1]=tan(robot_theta_yaw);
+float nomr_v=sqrt(pow(robotheadingdirection[0],2)+pow(robotheadingdirection[1],2));
+
+if(nomr_v>0){
+
+	robotheadingdirection[0]=robotheadingdirection[0]/nomr_v;
+	robotheadingdirection[1]=robotheadingdirection[1]/nomr_v;
+}
+//ROS_INFO("normv : %.3lf, x : %.3lf , y : %.3lf \n",nomr_v,robotheadingdirection[0],robotheadingdirection[1]);
+
+ if(abs(m_unitGoal[0])!=0)
+	temp_headingangle=atan(m_unitGoal[1]/m_unitGoal[0]);
+
+
+//Innerproduct
+temp = m_unitGoal[0]*robotheadingdirection[0]+m_unitGoal[1]*robotheadingdirection[1];
+float temp_norm = sqrt(pow(m_unitGoal[0],2)+pow(m_unitGoal[1],2))*sqrt(pow(robotheadingdirection[0],2)*pow(robotheadingdirection[1],2));
+
+temp =acos(temp);
+
+yaw_angle_deg=robot_theta_yaw*180/(3.141592);
+float temp_headingangle_deg=temp_headingangle*180/(3.141592);
+
+temp_deg=temp*180/(3.141592);
+//ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between angle : %.3lf",robot_theta_yaw,temp_headingangle,temp);
+//ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between angle : %.3lf",yaw_angle_deg,temp_headingangle_deg,temp_deg);
+unitgoal[0]=1.0;
+unitgoal[1]=tan(temp);
+nomr_v = sqrt(pow(unitgoal[0],2)+pow(unitgoal[1],2));
+unitgoal[0]=unitgoal[0]/nomr_v;
+unitgoal[1]=unitgoal[1]/nomr_v;
+
+int NearestGoal_dir=0;
+
+	if(temp_deg<18.1)
+	{
+		NearestGoal_dir=1;
+	}
+	else if(temp_deg < 71)
+	{
+		NearestGoal_dir=2;
+	}
+	else if(temp_deg < 107.2)
+	{
+		NearestGoal_dir=3;
+	}
+	else if(temp_deg <161)
+	{
+		NearestGoal_dir=4;
+	}
+	else if(temp_deg <198)
+	{
+		NearestGoal_dir=5;
+	}
+	else if (temp_deg <251)
+	{
+		NearestGoal_dir=6;
+	}
+	else if (temp_deg <289)
+	{
+		NearestGoal_dir=7;
+	}
+	else if (temp_deg <342)
+	{
+		NearestGoal_dir=8;
+	}
+	else{
+
+		NearestGoal_dir=1;
+	 }
+
+// unitgoal[0]=m_unitGoal[0]-robotheadingdirection[0];
+// unitgoal[1]=m_unitGoal[1]-robotheadingdirection[1];
+// nomr_v = sqrt(pow(unitgoal[0],2)+pow(unitgoal[1],2));
+// unitgoal[0]=unitgoal[0]/nomr_v;
+// unitgoal[1]=unitgoal[1]/nomr_v;
 
 //cout<<"Goal unit direction : "<<unitgoal[0]<<" , "<<unitgoal[1]<<endl;
+// for(int i(0);i<8;i++)
+// 	 innervector[i]=ActionCC[i][0]*unitgoal[0]+ActionCC[i][1]*unitgoal[1];
 
+// int maxvalue_ix =getIndexOfLargestElement(innervector);
 
-for(int i(0);i<8;i++)
- innervector[i]=ActionCC[i][0]*unitgoal[0]+ActionCC[i][1]*unitgoal[1];
-
-int maxvalue_ix =getIndexOfLargestElement(innervector);
-
-maxvalue_ix++;
+// maxvalue_ix++;
 
 //cout<<"Goal direction : "<<maxvalue_ix<<endl;
 
-return maxvalue_ix;
+return NearestGoal_dir;
 
 }
 
@@ -581,86 +678,95 @@ return RobotHeading;
 
 }
 
-
 int CBAManager::ActionfromGUICmd(int _cmd)
 {
-	
 	bool IsSave=true;
 	bool ReadytoMove=false;
 	vector<float> cur_featureV=getFeaturevector();
-
 
 	for(int i(0);i<cur_featureV.size();i++)
 		cout<<cur_featureV[i]<<"\t ";
 	cout<<endl;
 
+	std_msgs::Int8 cmd_action;
 
-	
 	switch(_cmd)
 	{
-		case 10:
+		case 10: //Predict				
 			boolAuto=false;
-			 //UpdateClassifier();
-			 //    cout<<"predict"<<endl;
+			cout<<"predict"<<endl;
 			Desiredaction=getDirectionfromCBA(cur_featureV);
-			cout<<"predicted policy :" <<Desiredaction<<endl;
+			ROS_INFO("predicted policy : %d, Confidence :%.3lf \n",Desiredaction, pClassifier->Confidence);
 			
+		break;
+		case 11: //Good
+			cout<<"Good(save)"<<endl;
+			SaveCurrentPolicy(storedFeaturevector, Desiredaction);	
+			ReadytoMove=true;
+			
+			// HSR_Pub.publish(cmd_action);
 			break;
-		case 11: cout<<"Good"<<endl;
-				cout<<"Go to Next Step"<<endl;
-				 SaveCurrentPolicy(cur_featureV, Desiredaction);	
-				ReadytoMove=true;
-			break;
-		case 12: cout<<"Bad"<<endl;
-				boolAuto=true;
+		case 12: //Bad
+				cout<<"Bad"<<endl;
+				//boolAuto=true;
 				// IsSave=false;
-				// cout<<"Teach me the desired direction"<<endl;
+				cout<<"Teach me the desired direction"<<endl;
 			break;
-		case 15: cout<<"get MDP Solution"<<endl;
-				 //PublishMapInfo2Matlab();
+		case 15: 
+				 cout<<"get MDP Solution"<<endl;
+				 Desiredaction=getMDPfromFeature();
 			break;
-		case 13: cout<<"SaveDataFile"<<endl;
+		case 13: //Save 
+				cout<<"SaveDataFile"<<endl;
 				saveCurrentDataFile();
 			break;
-		case 16: cout<<"Load"<<endl;
+		case 16: //Load 
 				LoadDataFile();
-			//	cout<<"loaded"<<endl;
+				cout<<"loaded"<<endl;
 				updateMaptoVec();
-
 			break;
-        case 14: cout<<"Auotonomous mode"<<endl;
+        case 14: //Auto 
+        		cout<<"Auotonomous mode"<<endl;
 				// LoadDataFile();
-        		boolAuto=!boolAuto;
+        		//boolAuto=!boolAuto;
 			break;			
-		case 1:  cout<<"Desired movement : Turn Left"<<endl;
+		case 1:  //Turn left
+				 cout<<"Desired movement : Turn Left"<<endl;
 				 Desiredaction=1;
+				 setStoredFeatureVector(cur_featureV);
 				 // SaveCurrentPolicy(cur_featureV, Desiredaction);	
 				 ReadytoMove=true;
 		      break;
-		case 2:  cout<<"Desired movement : Go Forward"<<endl;
+		case 2:  //Go Forward
+				 cout<<"Desired movement : Go Forward"<<endl;
 				 Desiredaction=2;
+				 setStoredFeatureVector(cur_featureV);
 				 //SaveCurrentPolicy(cur_featureV, Desiredaction);	
 				 ReadytoMove=true;
 			break;
-		case 3: cout<<"Desired movement : Turn Right"<<endl;
+		case 3:   //Turn right
+		  		  cout<<"Desired movement : Turn Right"<<endl;
+				  setStoredFeatureVector(cur_featureV);
 				  Desiredaction=3;	
 			      //SaveCurrentPolicy(cur_featureV, Desiredaction);
 			      ReadytoMove=true;
 			break;
-		case 4 : cout<<"Stop"<<endl;
-				 Desiredaction=0;
-				 //SaveCurrentPolicy(cur_featureV, Desiredaction);
+		case 4 :  //Move
+				 cout<<"Move"<<endl;
+				 
+				 cmd_action.data=Desiredaction;
+				 HSR_Pub.publish(cmd_action);
 				 ReadytoMove=false;
 			break;
 
-		case 5 : cout<<"Update Classifier"<<endl;
+		case 5 : //Update
+				 cout<<"Update Classifier"<<endl;
 				 UpdateClassifier();
 				 //Desiredaction=5;
 				 //SaveCurrentPolicy(cur_featureV, Desiredaction);
 				 
 				 ReadytoMove=true;
 			break;
-
 		case 6 : cout<<"Desired movement : W-S"<<endl;
 				 Desiredaction=6;
 				 SaveCurrentPolicy(cur_featureV, Desiredaction);
@@ -685,7 +791,17 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 //		default: 
 
 	}
+
+
 	return 0;
+
+}
+
+void CBAManager::setStoredFeatureVector(const vector<float>& featurevector)
+{
+
+	for(int i(0);i<Feature_dim;i++)
+		storedFeaturevector[i]=featurevector[i];
 
 }
 
@@ -694,25 +810,42 @@ std::vector<float> CBAManager::getFeaturevector()
 	std::vector<float> FeatureVector(Feature_dim,0);
 	int idx=0;
 
-	for(int i(0);i<pMapParam->State_Type.size();i++)
-		FeatureVector[idx++]=pMapParam->State_Type[i];
-	
-	for(int j(0);j<pMapParam->State_Distance.size();j++)
-		FeatureVector[idx++]=pMapParam->State_Distance[j];
+	// for(int i(0);i<pMapParam->State_Type.size();i++)
+	// 	FeatureVector[idx++]=pMapParam->State_Type[i];
+	//occupancy type
+	FeatureVector[0]=pMapParam->State_Type[1];
+	FeatureVector[1]=pMapParam->State_Type[2];
+	FeatureVector[2]=pMapParam->State_Type[4];
+	FeatureVector[3]=pMapParam->State_Type[7];
+	FeatureVector[4]=pMapParam->State_Type[6];
+	FeatureVector[5]=pMapParam->State_Type[5];
+	FeatureVector[6]=pMapParam->State_Type[3];
+	FeatureVector[7]=pMapParam->State_Type[0];
+
+	//distance
+	FeatureVector[8]=pMapParam->State_Distance[1];
+	FeatureVector[9]=pMapParam->State_Distance[2];
+	FeatureVector[10]=pMapParam->State_Distance[4];
+	FeatureVector[11]=pMapParam->State_Distance[7];
+	FeatureVector[12]=pMapParam->State_Distance[6];
+	FeatureVector[13]=pMapParam->State_Distance[5];
+	FeatureVector[14]=pMapParam->State_Distance[3];
+	FeatureVector[15]=pMapParam->State_Distance[0];
+
+	// for(int j(0);j<pMapParam->State_Distance.size();j++)
+	// 	FeatureVector[idx++]=pMapParam->State_Distance[j];
 	
 	//cout<<"occupancy loaded"<<endl;
 
-	FeatureVector[idx++]=getnearestGoalDirection();
-	
+	FeatureVector[16]=getnearestGoalDirection();		
 	//cout<<"Nearest loaded : "<<getnearestGoalDirection() <<endl;
-
-	FeatureVector[idx++]=getnearestHumanDirection();
-
+	FeatureVector[17]=getnearestHumanDirection();	//nearest human
 	//cout<<"Human direction"<<getnearestHumanDirection()<<endl;
-
-
 	//vector<int> RobotCoord=getCurRobotCoord();
-	FeatureVector[idx++]=getRobotHeadingDirection();
+	FeatureVector[18]=getMDPfromFeature();			//mdp
+
+//	ROS_INFO("goal D : %d , Human D : %d , MDP sol : %d \n",FeatureVector[16],FeatureVector[17],FeatureVector[18]);
+
 
 	//cout<<"Heading direction"<<getRobotHeadingDirection()<<endl;
 
@@ -792,14 +925,15 @@ int CBAManager::getDirectionfromCBA(const vector<float> featurevector)
 
 	if(pClassifier->IsLearned)
 		{
-			//cout<<" ELM Classifier"<<endl;
+			cout<<" cmd from Classifier"<<endl;
 			result=pClassifier->Classify(featurevector);
 
 		}
 	else
 	{
-		//result=getMDPfromFeature(featurevector);
-		result =floor((rand()/((double) RAND_MAX))*3.2);
+		cout<<" cmd from Mdp"<<endl;
+		result=getMDPfromFeature();
+		//result =floor((rand()/((double) RAND_MAX))*3.2);
 		//result = (result % 3)+1;
 	}
 	
@@ -858,10 +992,16 @@ int CBAManager::getMDPsolution(vector<int> posCoord)
 }
 
 
-int CBAManager::getMDPfromFeature(const vector<float> featurevector)
+int CBAManager::getMDPfromFeature()
 {
+	 int robotid=pMapParam->robot_map_id;
+	 int res=0;
 
-	int res=featurevector[18];
+	 	if(m_MDPsolutionMap.size()>0)
+		{
+			res=m_MDPsolutionMap[robotid];
+			//ROS_INFO("mdp sol load id : %d, res : %d", robotid,res);
+		}
 	return res;
 }
 
@@ -1048,15 +1188,15 @@ void CBAManager::ConvertVec2Map()
 void CBAManager::setMDPSols(vector<int> MDPsolutions)
 {
 	
-	m_MDPsolutionMap.resize(MDPsolutions.size());
-	for(int i(0); i<MDPsolutions.size();i++)
-		{
+	// m_MDPsolutionMap.resize(MDPsolutions.size());
+	// for(int i(0); i<MDPsolutions.size();i++)
+	// 	{
 
-			m_MDPsolutionMap[i]= MDPsolutions[i];
+	// 		m_MDPsolutionMap[i]= MDPsolutions[i];
 			
-		}
+	// 	}
 
-	 cout<<"MDP sols saved, solution size :"<<m_MDPsolutionMap.size()<<endl;
+	//  cout<<"MDP sols saved, solution size :"<<m_MDPsolutionMap.size()<<endl;
 	// int idx=0;
 	// for(int i(20);i<159;i++)
 	// 	for(int j(90);j<149;j++)

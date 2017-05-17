@@ -64,9 +64,6 @@ def listener():
 	cli.wait_for_result()
 
 
-
-
-
 # publisher = rospy.Publisher("/cba/move_base_goal", MoveBaseActionGoal, queue_size=1)
 if __name__ == '__main__':
     listener()

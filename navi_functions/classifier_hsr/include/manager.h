@@ -8,6 +8,8 @@
 #include "ros/ros.h"
 #include <ros/package.h>
 #include "cba_msgs/CBA_NavInfo.h"
+#include "nav_msgs/Odometry.h"
+#include "std_msgs/Int8.h"
 
 
 #define Grid_STEP 10
@@ -43,6 +45,7 @@ public :
 	float 		  m_cell_y_width;
 	int   		  Num_grid_X;
 	int   		  Num_grid_Y;
+	int 		  robot_map_id;
 	vector<int>   Cell_Info;
 	vector<int>   OCC_Info;
 	vector<int>   Robot_localpos;
@@ -60,6 +63,7 @@ public :
 	void set_State_Distance(vector<float> _State_Distance);
 	void set_NearestHuman_V(vector<float> _NearestHuman_V);
 	void set_RobotHeading_V(vector<float> _RobotHeading_V);
+	void set_RobotId(int _robotid);
 };
 
 class CBAManager
@@ -71,7 +75,9 @@ public:
     ELMClassifier* pClassifier;
     MapParam*		pMapParam;    
    // ros::Publisher  Matlab_Pub;
-    ros::Publisher  Trikey_Pub;
+   
+    ros::Publisher  HSR_Pub;
+
     //Env_index :
     // 0: free
     // 1: Obstacle
@@ -87,6 +93,10 @@ public:
    	vector<int>  m_Start;							//Start position of(x,y)
 	vector<int>  m_Goal;							//Goal position of (x,y)
 	vector<int>  m_Robot;					    	//Current Robot position of (x,y)
+	vector<float> m_unitGoal;
+
+	vector<float> storedFeaturevector;
+
 	int 	     Feature_dim;
 	int          X_mapSize;
 	int          Num_Grids;
@@ -97,6 +107,7 @@ public:
 	int          Local_Y_end;
 	int          Scale_constant;
 	bool		 boolMatlabsendData;
+	float		 robot_theta_yaw;
 
 
 	//Set function
@@ -107,6 +118,7 @@ public:
 	void SaveCurrentPolicy(const std::vector<float> StateVector, int _Policy);
     bool UpdateClassifier();
     void ConvertVec2Map();
+    void IntializeROS_publisher();
     
     void        updateMaptoVec();
 
@@ -136,7 +148,7 @@ public:
 	int 			getnearestHumanDirection();	
 	int 			getRobotHeadingDirection();																		//get direction of Human
     int 			getMDPsolution(vector<int> posCoord);						//get direction of MDPsolution
-    int             getMDPfromFeature(const vector<float> featurevector);
+    int             getMDPfromFeature();
     int  			getDirectionfromCBA(const vector<float> featurevector);
     int  			getRobotPos_CellNum();
 	vector<int> 	getRobotPos_CellVector();
@@ -156,8 +168,11 @@ public:
 	void            getMDPsolutionFile();
 	int 			getIndexOfLargestElement(vector<double> arr);
 	void 		    saveDatafile2TotalData();
-	int            Desiredaction;
+	void 			setStoredFeatureVector(const vector<float>& featurevector);
+	int             Desiredaction;
 	bool 			boolAuto;
+
+
 
 
 

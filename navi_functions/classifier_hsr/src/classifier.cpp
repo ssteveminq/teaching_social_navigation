@@ -196,6 +196,7 @@ ELMClassifier::ELMClassifier()
    NeuronNum=8;
    VotingSize=30;
    Dim=19;
+   Confidence=0.0;
    
 	VotingVector.resize(VotingSize);
 	for(int i=0;i<VotingSize;i++)
@@ -275,13 +276,12 @@ int ELMClassifier::Classify(const RowVectorXd TestVector)
 	  for(int i=0; i<T.cols();i++)
 		tempsss=tempsss+T(0,i);
 
-	   tempsss=miter->second/tempsss;
+	    tempsss=miter->second/tempsss;
      	maxindex=miter->first+1;
+        Confidence=tempsss;
+       //cout<< "Confidence is : "<<tempsss<<endl;
 
-
-      // cout<< "Confidence is : "<<tempsss<<endl;
-
-     	if( tempsss<0.15)
+     	if( Confidence<0.15)
 		    maxindex=0;	
 
 	   // if( tempsss<0.5)
@@ -858,8 +858,8 @@ int ELMClassifier::readSignalDataFile()
 			}
 		}
 
-		InputFile2.close();	
-
+		InputFile2.close();
+		
 		////// -- Read Dataset --////
 		DataListMap.clear();
 		DataSet= MatrixXd(DataLenth,Dim);

@@ -61,17 +61,21 @@ public:
 
 	void 		setDimension(int Dim_){Dim=Dim_;}
 	void 		setNumofClass(int NumofClass_){ClassNum=NumofClass_;}
-
 	void		offlineSimulate();
 	bool		readDataParameters();
 	bool		readSignalData();
 	int			readSignalDataFile();
+	int 		ResultVoting(int cmd);
 	void        Updatedatalistmap( vector <vector<float> >_DataSet, vector<int> DataState);
     void        updateMatrixMap();
-
-	bool UpdateLearningParameters(vector< vector<float> >_DataSet, vector<int> DataState);
+	bool 		UpdateLearningParameters(vector< vector<float> >_DataSet, vector<int> DataState);
 
 	int			NeuronNum;
+	int 		pre_result;
+	int 		VotingSize;
+	double 		Confidence;
+
+	ifstream	InputFile;
 	MatrixXd	W_projection;
 	VectorXd	Sigma;
 	MatrixXd	Mu;
@@ -79,14 +83,10 @@ public:
 	MatrixXd	DataSet;
 	MatrixXd	DataSetState;
 
-	vector<vector<float> > TrainingDataSet;       
-    vector<int> 		TrainingDataState;    
-
-	int pre_result;
-	int ResultVoting(int cmd);
-	std::vector<int> 	VotingVector;
-	int 				VotingSize;
-	ifstream			InputFile;
+    std::vector<int> 		    TrainingDataState;    
+	std::vector<int> 			VotingVector;
+	std::vector<vector<float> > TrainingDataSet;       
+	
 	
 };
 

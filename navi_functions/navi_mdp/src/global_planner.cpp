@@ -49,7 +49,9 @@ int main(int argc, char **argv)
 
   while (ros::ok())
   {
-	  
+	   
+     //problemmanager.MDPsolPublish();
+
      if(problemmanager.m_boolSolve)
      {
         printf("Begin to solve\n");

@@ -2,6 +2,8 @@
 #include "manager.h"
 #include "std_msgs/String.h"
 #include "std_msgs/Int8.h"
+#include "std_msgs/Int32MultiArray.h"
+#include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Pose2D.h"
 #include <Eigen/Dense>
 #include <sstream>
@@ -20,17 +22,9 @@ CBAManager      m_Manager;
 std_msgs::String GUI_msg;
 MapParam        CurrentMap;
 MapParam         MatlabMap;
+
 int  CMD_GUI=0;
-
-std::string host = "192.168.1.107";
-std::string port = "1235";
-std::string answer;
-std::string sender;
-std::stringstream ss;
 char sz[18];
-
-
-
 
 void CmdStrCallback(const std_msgs::String::ConstPtr& msg);
 void CmdIntCallback(const std_msgs::Int8::ConstPtr& msg);
@@ -51,6 +45,7 @@ void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
   for(int i = 0; i < msg->cell_occupancy_type.size(); i++)
     cell_occupancy_type[i]=msg->cell_occupancy_type[i];
 
+  //manager.m_mdpsol 
   for(int i = 0; i < msg->action_policy_type.size(); i++)
     action_policy_type[i]=msg->action_policy_type[i];
 
@@ -66,9 +61,10 @@ void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
    NearestHumanVector[0]=msg->unit_x_to_human;
    NearestHumanVector[1]=msg->unit_y_to_human;
 
- RobotHeadingDirection[0]=msg->unit_base_link_x;
- RobotHeadingDirection[1]=msg->unit_base_link_x;
+   RobotHeadingDirection[0]=msg->unit_base_link_x;
+   RobotHeadingDirection[1]=msg->unit_base_link_x;
 
+   int robot_map_id=msg->int_robot_id;
 
 // std::cout<<"NH x:" << NearestHumanVector[0]<< ",  y : "<<NearestHumanVector[1]<<endl;  
 
@@ -79,7 +75,6 @@ void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
   //std::cout << msg->action_policy_type.size() << std::endl;
 
   //Save to MapParam
-
   CurrentMap.setWidth(width);
   CurrentMap.setHeight(height);
   CurrentMap.set_Cell_Info(cell_occupancy_type);
@@ -87,63 +82,61 @@ void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
   CurrentMap.set_Robot_Info(robot_local_cell_indices);
   CurrentMap.set_State_Type(state_type);
   CurrentMap.set_State_Distance(state_Distance);
+  CurrentMap.set_RobotId(robot_map_id);
   CurrentMap.set_NearestHuman_V(NearestHumanVector);
   CurrentMap.set_RobotHeading_V(RobotHeadingDirection);
 
  //printf("I am here\n");
 
-  vector<float> FeatureVector = m_Manager.getFeaturevector();
-  int AutoDesiredaction=m_Manager.getDirectionfromCBA(FeatureVector);
+  
+  
 
-
+  int AutoDesiredaction=0.0;
   if(m_Manager.boolAuto){
+    vector<float> FeatureVector = m_Manager.getFeaturevector();             //making feature vector for   
+    AutoDesiredaction=m_Manager.getDirectionfromCBA(FeatureVector);     //Get command from CBA
     printf("Auto Mode\n");
     ros::Rate r(0.45);
     
-     //   try {
-     //     libsocket::inet_stream sock(host,port,LIBSOCKET_IPv4);
-     //      sock >> answer;
-     //      std::cout << answer;
-          
-     //    // ss<<1;
-     //    // sender=ss.str();
-
-     //    //ithcmd=cmdarry[i];
-     //     //ithcmd=CMD_GUI;
-
-     //    printf("Automode command : %d",AutoDesiredaction);
-     //    sprintf(sz,"%d",AutoDesiredaction);
-     //    sock<<sz;
-        
-     //    //boost::this_thread::sleep( boost::posix_time::seconds(1));
-
-        
-
-     //  } catch (const libsocket::socket_exception& exc){
-     //     std::cerr << exc.mesg;
-     // }
-
+   
      r.sleep();
  
   }
 }
 
 
-
-
-
-void Goal_Matlab_Callback(const geometry_msgs::Pose2D::ConstPtr& msg);
-void Goal_Matlab_Callback(const geometry_msgs::Pose2D::ConstPtr& msg)
+void Unitgoal_Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
 { 
-   vector<int> scaledGoalPos(2,0);
-   scaledGoalPos[0]=static_cast<int>(msg->x);
-   scaledGoalPos[1]=static_cast<int>(msg->y);
 
+   m_Manager.m_unitGoal[0]=msg->data[0];
+   m_Manager.m_unitGoal[1]=msg->data[1];
 
-   m_Manager.m_Goal[0]=m_Manager.Local_X_start+scaledGoalPos[0]*m_Manager.Scale_constant-1;
-   m_Manager.m_Goal[1]=m_Manager.Local_Y_start+scaledGoalPos[1]*m_Manager.Scale_constant-1;
+   // m_Manager.m_Goal[0]=m_Manager.Local_X_start+scaledGoalPos[0]*m_Manager.Scale_constant-1;
+   // m_Manager.m_Goal[1]=m_Manager.Local_Y_start+scaledGoalPos[1]*m_Manager.Scale_constant-1;
+   //ROS_INFO("msg-data x: %.3lf, y: %.3lf\n",msg->data[0],msg->data[1]);
+   //ROS_INFO("unit goal x: %.3lf, y: %.3lf\n",m_Manager.m_unitGoal[0],m_Manager.m_unitGoal[1]);
+   //cout<<"Goal Pose is x: "<<m_Manager.m_Goal[0]<<"y : "<<m_Manager.m_Goal[1]<<endl;
 
-   cout<<"Goal Pose is x: "<<m_Manager.m_Goal[0]<<"y : "<<m_Manager.m_Goal[1]<<endl;
+}
+
+void mdpsol_Callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
+{
+
+  //ROS_INFO("MDP solution received");
+  m_Manager.m_MDPsolutionMap.resize(msg->data.size());
+  for(int i(0);i<msg->data.size();i++)
+    {
+      m_Manager.m_MDPsolutionMap[i]=msg->data[i];
+    }
+}
+void  hsrbodom_Callback(const nav_msgs::Odometry::ConstPtr &msg)
+{
+
+  float robot_x = msg->pose.pose.position.x;// - origin_x;
+  float robot_y = msg->pose.pose.position.y;// - origin_y;  
+  float robot_theta = msg->pose.pose.orientation.z;// - origin_y; //this is not exact=>sensor_imu
+
+   m_Manager.robot_theta_yaw=asin(robot_theta)*2;
 
 }
 
@@ -169,6 +162,8 @@ int main(int argc, char **argv)
 
   m_Manager.pMapParam=&CurrentMap;
   m_Manager.pClassifier=&elmclassifier_;
+  //This should be called after the 
+  m_Manager.IntializeROS_publisher();
   //m_Manager.LoadDataFile();
 
 
@@ -179,7 +174,9 @@ int main(int argc, char **argv)
    ros::Subscriber cmd_sub2;
    ros::Subscriber grid_sub;   
    ros::Subscriber grid_sub2; 
-   ros::Subscriber matlabgoal_sub; 
+   ros::Subscriber unitgoal_sub; 
+   ros::Subscriber mdpsol_sub;
+   ros::Subscriber Odometery_sub;
    ros::NodeHandle n;
 
  //  ros::Timer timer1 = n.createTimer(ros::Duration(0.5), callback1);
@@ -187,8 +184,11 @@ int main(int argc, char **argv)
    //Subscriber
    cmd_sub  = n.subscribe<std_msgs::String>("/CBA_cmd_str", 50,CmdStrCallback); 
    cmd_sub2 = n.subscribe<std_msgs::Int8>("/CBA_cmd_int", 50,CmdIntCallback);
-   grid_sub = n.subscribe<cba_msgs::CBA_NavInfo>("/CBA_grid_occ_topic", 20, NavInfo_Callback);  
-   matlabgoal_sub= n.subscribe<geometry_msgs::Pose2D>("/Matlab_goal", 10, Goal_Matlab_Callback);
+   grid_sub = n.subscribe<cba_msgs::CBA_NavInfo>("/CBA_featureV", 20, NavInfo_Callback);  
+   unitgoal_sub = n.subscribe<std_msgs::Float32MultiArray>("/CBA_unit_goal", 10, Unitgoal_Callback);
+   mdpsol_sub = n.subscribe<std_msgs::Int32MultiArray>("/MDP/Solution", 10, mdpsol_Callback);
+   Odometery_sub=n.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, hsrbodom_Callback);
+
    ros::Rate loop_rate(20);
 
   while (ros::ok())

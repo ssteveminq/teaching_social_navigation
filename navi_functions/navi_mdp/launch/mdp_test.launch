@@ -1,14 +1,19 @@
 <launch>
    <node name="mdp_node" pkg="navi_mdp" type="mdpplanner" respawn="false" output="screen"/>
 
-   <node pkg="grid_map_demos" type="navigation_map" name="grid_map_navigation_map" output="screen" />
+   <node name="feature_grid_node" pkg="grid_hsr" type="feature_grid" respawn="false" output="screen"/>
+
+   <node name="classifier_hsr_node" pkg="classifier_hsr" type="hsr_classifier_test" respawn="false" output="screen"/>
+
+
+  <!--  <node pkg="grid_map_demos" type="navigation_map" name="grid_map_navigation_map" output="screen" />
   
   <node pkg="grid_map_visualization" type="grid_map_visualization" name="grid_map_visualization" output="screen">
     <rosparam command="load" file="$(find navi_mdp)/config/navigation_map.yaml" />
-   </node>
+   </node> -->
 
- <node pkg="local_map" type="local_map" name="local_map_navigation_map" output="screen">
- </node>
+<!--  <node pkg="local_map" type="local_map" name="local_map_navigation_map" output="screen">
+ </node> -->
 
  
 <arg name="gui" default="flase" />

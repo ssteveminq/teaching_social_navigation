@@ -37,7 +37,7 @@
 
 #define Num_action 8
 #define deltaMin 1E-05
-#define Maxiteration 300
+#define Maxiteration 250
 
 #define ra (-1.0)
 using namespace Eigen;
@@ -114,6 +114,7 @@ class MDPManager
  	vector<int>       m_localoccupancy;
 
 
+
  	std::vector<double> Map_orig_Vector;
 	std::vector<double> CurVector;
 	std::vector<double> GoalVector;
@@ -149,6 +150,8 @@ class MDPManager
 	ros::Subscriber  Localmap_sub;
 	ros::Publisher 	 SplinePath_pub;
 	ros::Publisher 	 SplinePath_pub2;
+	ros::Publisher   UnitGoalVec_pub;
+	ros::Publisher   MDPSol_pub;
 	
 
 	//Static_mdp
@@ -193,6 +196,6 @@ class MDPManager
  	void    		CoordinateTransform_Rviz_Grid_Start(double _x, double _y);
 	void    		CoordinateTransform_Rviz_Grid_Goal(double _x, double _y);
 	void            Mapcoord2GlobalCoord(const vector<int>& _Mapcoord, vector<double>& GlobalCoord);
-	
+	void			MDPsolPublish();
 };
 

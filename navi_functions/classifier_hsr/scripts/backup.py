@@ -44,3 +44,6 @@ cli.send_goal(goal)
 
 # wait for the action server to complete the order
 cli.wait_for_result()
+
+
+
