@@ -917,8 +917,8 @@ void MDPManager::Mapcoord2GlobalCoord(const vector<int>& _Mapcoord, vector<doubl
 
 	GlobalCoord.resize(2);
 	//globalCoord origin x, y;
-	GlobalCoord[0]=Scaled_static_map.info.origin.position.x+Scaled_static_map.info.resolution*_Mapcoord[0];
-	GlobalCoord[1]=Scaled_static_map.info.origin.position.y+Scaled_static_map.info.resolution*_Mapcoord[1];
+	GlobalCoord[0]=Scaled_static_map.info.origin.position.x+Scaled_static_map.info.resolution*_Mapcoord[0]+0.5*Scaled_static_map.info.resolution;
+	GlobalCoord[1]=Scaled_static_map.info.origin.position.y+Scaled_static_map.info.resolution*_Mapcoord[1]+0.5*Scaled_static_map.info.resolution;
 
 }
 
@@ -1046,12 +1046,12 @@ void MDPManager::generatePath()
 	m_CubicSpline_y = new srBSpline;
 	m_CubicSpline_y->_Clear();
 
-	vector<int> Spline_x;
-	vector<int> Spline_y;
+	vector<double> Spline_x;
+	vector<double> Spline_y;
 	m_CubicSpline_x->CubicSplineInterpolation(t_values,x_values,x_values.size());
 	m_CubicSpline_y->CubicSplineInterpolation(t_values,y_values,y_values.size());
 
-	int path_size=6;	
+	int path_size=8;	
 	double const_path=(time_length)/ path_size ;
 
 	Spline_x.push_back(x_values[0]);
@@ -1100,11 +1100,8 @@ void MDPManager::generatePath()
 	 SplinePath_pub2.publish(smoothedPath);
 
 	 // Publish static map_path
-
-	
 	for(int j(0);j<Scaled_static_map_path.data.size();j++)
 	 {	
-
 	 	Scaled_static_map_path.data[j]=0.0;
 	 }
 

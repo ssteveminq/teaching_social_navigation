@@ -144,6 +144,7 @@ void CBAManager::Init()
 
 	storedFeaturevector.resize(Feature_dim,0.0);
 	robot_theta_yaw=0.0;
+	Storedbaddecision=0;
 
  //    Local_X_start=10;
 	// Local_Y_start=90;
@@ -158,6 +159,7 @@ void CBAManager::Init()
 	
 	boolMatlabsendData=false;
 	boolAuto=false;
+	Isbad=false;
 }
 
 	
@@ -338,7 +340,6 @@ if(nomr_v>0){
  if(abs(m_unitGoal[0])!=0)
 	temp_headingangle=atan(m_unitGoal[1]/m_unitGoal[0]);
 
-
 //Innerproduct
 temp = m_unitGoal[0]*robotheadingdirection[0]+m_unitGoal[1]*robotheadingdirection[1];
 float temp_norm = sqrt(pow(m_unitGoal[0],2)+pow(m_unitGoal[1],2))*sqrt(pow(robotheadingdirection[0],2)*pow(robotheadingdirection[1],2));
@@ -348,7 +349,9 @@ temp =acos(temp);
 yaw_angle_deg=robot_theta_yaw*180/(3.141592);
 float temp_headingangle_deg=temp_headingangle*180/(3.141592);
 
-temp_deg=temp*180/(3.141592);
+
+temp_deg=temp_headingangle_deg-yaw_angle_deg;
+// temp_deg=temp_deg*180/(3.141592);
 //ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between angle : %.3lf",robot_theta_yaw,temp_headingangle,temp);
 //ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between angle : %.3lf",yaw_angle_deg,temp_headingangle_deg,temp_deg);
 unitgoal[0]=1.0;
@@ -696,7 +699,8 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 			boolAuto=false;
 			cout<<"predict"<<endl;
 			Desiredaction=getDirectionfromCBA(cur_featureV);
-			ROS_INFO("predicted policy : %d, Confidence :%.3lf \n",Desiredaction, pClassifier->Confidence);
+
+			ROS_INFO("predicted policy : %d, Confidence :%.3lf \n", Desiredaction, pClassifier->Confidence);
 			
 		break;
 		case 11: //Good
@@ -704,10 +708,20 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 			SaveCurrentPolicy(storedFeaturevector, Desiredaction);	
 			ReadytoMove=true;
 			
+			//write bad log
+			if(Isbad)
+			{	
+				SaveBadPolicy(storedFeaturevector,Storedbaddecision,Desiredaction);
+				Storedbaddecision=0;
+				Isbad=false;
+			}	
+
 			// HSR_Pub.publish(cmd_action);
 			break;
 		case 12: //Bad
 				cout<<"Bad"<<endl;
+				Storedbaddecision=Desiredaction;
+				Isbad=true;
 				//boolAuto=true;
 				// IsSave=false;
 				cout<<"Teach me the desired direction"<<endl;
@@ -728,7 +742,7 @@ int CBAManager::ActionfromGUICmd(int _cmd)
         case 14: //Auto 
         		cout<<"Auotonomous mode"<<endl;
 				// LoadDataFile();
-        		//boolAuto=!boolAuto;
+        		boolAuto=!boolAuto;
 			break;			
 		case 1:  //Turn left
 				 cout<<"Desired movement : Turn Left"<<endl;
@@ -893,6 +907,26 @@ void CBAManager::SaveCurrentPolicy(const std::vector<float> StateVector, int _Po
 	 tempVector.clear();	
 
 }
+
+void CBAManager::SaveBadPolicy(const std::vector<float> StateVector, int bad, int good)
+{
+	
+	// TrainingDataSet.push_back(StateVector);
+	// TrainingDataState.push_back(_Policy);
+	//Total TrainingVector
+	 vector<float>  tempFVector(Feature_dim+2);
+	 for(int i(0);i<Feature_dim;i++)
+	 	tempFVector[i]=StateVector[i];
+
+	 tempFVector[Feature_dim]=bad;
+	 tempFVector[Feature_dim+1]=good;
+
+  	BadDecisionLog.push_back(tempFVector);
+	 
+	//  tempVector.clear();	
+
+}
+
 
 bool CBAManager::UpdateClassifier()
 {
@@ -1257,10 +1291,12 @@ void CBAManager::saveCurrentDataFile()
 	ofstream TrainingFile;
 	ofstream TrainingFileData;
 	ofstream TrainingFileState;
+	ofstream BadDtaLog;
 	
 	TrainingFile.open("/home/mk/TotalTrainingFile_recent.csv");
 	TrainingFileData.open("/home/mk/TrainingData_recent.csv");
 	TrainingFileState.open("/home/mk/TrainingState_recent.csv");
+	BadDtaLog.open("/home/mk/BadLog_recent.csv");
 	cout<<"Save Data File "<<endl;
 	//TrainingStateFile.open("TrainingStateFile.csv");
 
@@ -1306,8 +1342,15 @@ void CBAManager::saveCurrentDataFile()
 	}
 	TrainingFileState.close();
 
+	//Save Baddecsionlog
+	for(int i(0);i< BadDecisionLog.size();i++)
+	{
+		for(int j(0);j<Feature_dim+2;j++)
+			BadDtaLog<<BadDecisionLog[i][j]<<',';
 
-
+		BadDtaLog<<endl;		
+	}
+	BadDtaLog.close();
 
 	cout<<"Current Data Size is : "<<TotalTrainingDataSet.size()<<endl;
 

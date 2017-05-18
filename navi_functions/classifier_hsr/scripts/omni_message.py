@@ -27,7 +27,7 @@ while running == False:
 traj = trajectory_msgs.msg.JointTrajectory()
 traj.joint_names = ["odom_x", "odom_y", "odom_t"]
 p = trajectory_msgs.msg.JointTrajectoryPoint()
-p.positions = [0.488, 2.262, 1.57075]
+p.positions = [2.72, 3.75, 0.0]
 p.velocities = [0, 0, 0]
 p.time_from_start = rospy.Time(6)
 traj.points = [p]

@@ -116,6 +116,7 @@ public:
 	void setStartConfig (const vector<int> Start );
 	void setGoalConfig (const vector<int> Goal);
 	void SaveCurrentPolicy(const std::vector<float> StateVector, int _Policy);
+	void SaveBadPolicy(const std::vector<float> StateVector, int bad, int good);
     bool UpdateClassifier();
     void ConvertVec2Map();
     void IntializeROS_publisher();
@@ -128,6 +129,7 @@ public:
     map<int, MatrixXd>   TrainingDataMap;				 //data type for learning
 
     vector<vector<float> > TotalTrainingDataSet;              // Row, col, State(last column)
+    vector<vector<float> >  BadDecisionLog;
 
     //Get function
 	vector<int> 	getGoalConfig();
@@ -171,6 +173,8 @@ public:
 	void 			setStoredFeatureVector(const vector<float>& featurevector);
 	int             Desiredaction;
 	bool 			boolAuto;
+	bool            Isbad;
+	int             Storedbaddecision;
 
 
 

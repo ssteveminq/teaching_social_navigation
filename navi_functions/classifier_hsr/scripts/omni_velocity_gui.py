@@ -9,10 +9,12 @@ import controller_manager_msgs.srv
 import trajectory_msgs.msg
 import geometry_msgs.msg
 import controller_manager_msgs.srv
+from control_msgs.msg import JointTrajectoryControllerState
 from std_msgs.msg import String
 from std_msgs.msg import Int8
 from nav_msgs.msg import Odometry
 
+BASE_STATE_TOPIC = "/hsrb/omni_base_controller/state"
 
 class BaseMoveCBA(object):
     def __init__(self, wait=0.0):
@@ -23,6 +25,8 @@ class BaseMoveCBA(object):
         # Subscriber for receiving GUI command 
         rospy.Subscriber("/CBA_action_cmd", Int8, self.intcallback)
         rospy.Subscriber("/hsrb/odom", Odometry, self.odometryInput)
+        
+        rospy.Subscriber(BASE_STATE_TOPIC, JointTrajectoryControllerState,self.state_callback, queue_size=1)
         # message initialization
         self.tw = geometry_msgs.msg.Twist()
         #
@@ -43,6 +47,13 @@ class BaseMoveCBA(object):
         self.robot_pos_y=0.0
         self.robot_pos_z=0.0
         self.robot_ori_z=0.0
+        self.last_robot_theta=0.0
+
+    def state_callback(self,data):
+        self.last_robot_x = data.actual.positions[0];
+        self.last_robot_y = data.actual.positions[1];
+        self.last_robot_theta = data.actual.positions[2];
+        
 
     def odometryInput(self, data):
         self.robot_pos_x = data.pose.pose.position.x
@@ -54,7 +65,6 @@ class BaseMoveCBA(object):
 
 
     def listener(self,wait=0.0):
-        
         # make sure the controller is running
         rospy.wait_for_service('/hsrb/controller_manager/list_controllers')
         self.list_controllers = rospy.ServiceProxy('/hsrb/controller_manager/list_controllers', controller_manager_msgs.srv.ListControllers)
@@ -72,36 +82,37 @@ class BaseMoveCBA(object):
         self.pre_ori_z=self.robot_ori_z
          # command = data.data
         if data.data == 1:                       #Going home
-            self.tw.linear.x =0
-            self.tw.angular.z = 0.5
-            self.vel_pub.publish(self.tw)
+            # self.tw.linear.x =0
+            # self.tw.angular.z = 0.6
+            # self.vel_pub.publish(self.tw)
             # self.p.positions = [self.robot_pos_x,self.robot_pos_y,self.robot_ori_z+math.pi/4]
-            # self.p.velocities =[0,0,0]
-            # self.traj.points = [self.p]
-            # self.goal.trajectory = self.traj
-            # self.p.time_from_start = rospy.Time(3)
-            # self.cli.send_goal(self.goal)
-            # self.cli.wait_for_result()
+            self.p.positions = [self.robot_pos_x,self.robot_pos_y,self.last_robot_theta+math.pi/4]
+            self.p.velocities =[0,0,0]
+            self.traj.points = [self.p]
+            self.goal.trajectory = self.traj
+            self.p.time_from_start = rospy.Time(3)
+            self.cli.send_goal(self.goal)
+            self.cli.wait_for_result()
         elif data.data == 2:
-            # self.p.positions = [self.robot_pos_x+math.cos(self.pre_ori_z),self.robot_pos_y+math.sin(self.pre_ori_z),self.pre_ori_z]
+            # self.p.positions = [self.robot_pos_x+1,self.robot_pos_y,self.last_robot_theta]
             # self.p.velocities =[0,0,0]
             # self.traj.points = [self.p]
             # self.goal.trajectory = self.traj
             # self.p.time_from_start = rospy.Time(3)
             # self.cli.send_goal(self.goal)
             # self.cli.wait_for_result()
-            self.tw.linear.x = 5.5
+            self.tw.linear.x = 3.5
             self.vel_pub.publish(self.tw)
         elif data.data == 3:
-            # self.p.positions = [self.robot_pos_x,self.robot_pos_y,self.robot_ori_z-math.pi/4]
-            # self.traj.points = [self.p]
-            # self.goal.trajectory = self.traj
-            # self.p.time_from_start = rospy.Time(3)
-            # self.cli.send_goal(self.goal)
-            # self.cli.wait_for_result()
-            self.tw.linear.x =0
-            self.tw.angular.z = -0.5
-            self.vel_pub.publish(self.tw)
+            self.p.positions = [self.robot_pos_x,self.robot_pos_y,self.last_robot_theta-math.pi/4]
+            self.traj.points = [self.p]
+            self.goal.trajectory = self.traj
+            self.p.time_from_start = rospy.Time(3)
+            self.cli.send_goal(self.goal)
+            self.cli.wait_for_result()
+            # self.tw.linear.x =0
+            # self.tw.angular.z = -0.6
+            # self.vel_pub.publish(self.tw)
         elif data.data == 4:                     #Going home
             self.p.positions = [0,0,0.0]
             self.p.velocities =[0,0,0]
