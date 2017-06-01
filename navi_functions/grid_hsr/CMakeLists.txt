@@ -17,11 +17,21 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
+
+
+find_package(PCL 1.7 REQUIRED)
 find_package(Eigen3 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(include)
+include_directories(
+    include
+  ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
+)
+
 
 #add_message_files(FILES your_msg_file.msg)
+
 
 catkin_package(
   INCLUDE_DIRS include
@@ -40,16 +50,24 @@ catkin_package(
 )
 
 
+add_definitions(${PCL_DEFINITIONS})
+link_directories(${PCL_LIBRARY_DIRS} /usr/local/lib)
+
+
+
+
 
 add_executable(grid_node_hsr src/grid_node.cpp)
 add_executable(odom_grid_node_hsr src/odom_grid_node.cpp)
 add_executable(feature_grid src/feature_grid.cpp)
 add_executable(proj_map_reader_hsr src/proj_map_reader.cpp)
 add_executable(proj_map_saver_hsr src/proj_map_saver.cpp)
+add_executable(human_box_node src/human_boxes.cpp)
 
 target_link_libraries(grid_node_hsr ${catkin_LIBRARIES})
 target_link_libraries(odom_grid_node_hsr ${catkin_LIBRARIES})
 target_link_libraries(proj_map_reader_hsr ${catkin_LIBRARIES})
 target_link_libraries(proj_map_saver_hsr ${catkin_LIBRARIES})
 target_link_libraries(feature_grid ${catkin_LIBRARIES})
+target_link_libraries(human_box_node ${catkin_LIBRARIES}  ${PCL_LIBRARIES})
 

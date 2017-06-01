@@ -5,6 +5,14 @@
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "tf/transform_listener.h"
+#include "tf/message_filter.h"
+#include "tf/tf.h"
+#include <tf/transform_datatypes.h>
+// #include "tf/StampedTransform.h"
+#include "tf/LinearMath/Transform.h"
+//#include "tf/Vector3.h"
 #include <Eigen/Dense>
 #include <sstream>
 #include "cba_msgs/CBA_NavInfo.h"
@@ -88,15 +96,19 @@ void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
 
  //printf("I am here\n");
 
-  
-  
+   
 
   int AutoDesiredaction=0.0;
+  
   if(m_Manager.boolAuto){
-    vector<float> FeatureVector = m_Manager.getFeaturevector();             //making feature vector for   
-    AutoDesiredaction=m_Manager.getDirectionfromCBA(FeatureVector);     //Get command from CBA
-    printf("Auto Mode\n");
-    ros::Rate r(0.45);
+      vector<float> FeatureVector = m_Manager.getFeaturevector();             //making feature vector for   
+     AutoDesiredaction=m_Manager.getDirectionfromCBA(FeatureVector);         //Get command from CBA
+
+     //confidence output
+     //delivery command based on the confidence value 
+
+     printf("Auto Mode\n");
+     ros::Rate r(0.85);
     
    
      r.sleep();
@@ -108,8 +120,8 @@ void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
 void Unitgoal_Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
 { 
 
-   m_Manager.m_unitGoal[0]=msg->data[0];
-   m_Manager.m_unitGoal[1]=msg->data[1];
+   m_Manager.m_unitGoal[0]=msg->data[0]- m_Manager.robot_global_x_pos;
+   m_Manager.m_unitGoal[1]=msg->data[1]- m_Manager.robot_global_y_pos;
 
    // m_Manager.m_Goal[0]=m_Manager.Local_X_start+scaledGoalPos[0]*m_Manager.Scale_constant-1;
    // m_Manager.m_Goal[1]=m_Manager.Local_Y_start+scaledGoalPos[1]*m_Manager.Scale_constant-1;
@@ -136,6 +148,8 @@ void  hsrbodom_Callback(const nav_msgs::Odometry::ConstPtr &msg)
   float robot_y = msg->pose.pose.position.y;// - origin_y;  
   float robot_theta = msg->pose.pose.orientation.z;// - origin_y; //this is not exact=>sensor_imu
 
+   m_Manager.robot_global_x_pos=robot_x;
+   m_Manager.robot_global_y_pos=robot_y;
    m_Manager.robot_theta_yaw=asin(robot_theta)*2;
 
 }
@@ -159,44 +173,103 @@ int main(int argc, char **argv)
 //////////////////
   ros::init(argc, argv, "talker");
   // ros::Rate r(5);
-
   m_Manager.pMapParam=&CurrentMap;
   m_Manager.pClassifier=&elmclassifier_;
   //This should be called after the 
   m_Manager.IntializeROS_publisher();
   //m_Manager.LoadDataFile();
-
-
  	// std::cout <<"Helloworld" << std::endl; 
-   ros::Publisher  Matlab_Pub;
-   ros::Publisher  Map_Pub;
-   ros::Subscriber cmd_sub;
-   ros::Subscriber cmd_sub2;
-   ros::Subscriber grid_sub;   
-   ros::Subscriber grid_sub2; 
-   ros::Subscriber unitgoal_sub; 
-   ros::Subscriber mdpsol_sub;
-   ros::Subscriber Odometery_sub;
-   ros::NodeHandle n;
+  ros::Publisher  Matlab_Pub;
+  ros::Publisher  Map_Pub;
+  ros::Subscriber cmd_sub;
+  ros::Subscriber cmd_sub2;
+  ros::Subscriber grid_sub;   
+  ros::Subscriber grid_sub2; 
+  ros::Subscriber unitgoal_sub; 
+  ros::Subscriber mdpsol_sub;
+  ros::Subscriber Odometery_sub;
+  ros::NodeHandle n;
+
+
+  tf::TransformListener listener;
 
  //  ros::Timer timer1 = n.createTimer(ros::Duration(0.5), callback1);
  //  Publisher
    //Subscriber
-   cmd_sub  = n.subscribe<std_msgs::String>("/CBA_cmd_str", 50,CmdStrCallback); 
-   cmd_sub2 = n.subscribe<std_msgs::Int8>("/CBA_cmd_int", 50,CmdIntCallback);
-   grid_sub = n.subscribe<cba_msgs::CBA_NavInfo>("/CBA_featureV", 20, NavInfo_Callback);  
-   unitgoal_sub = n.subscribe<std_msgs::Float32MultiArray>("/CBA_unit_goal", 10, Unitgoal_Callback);
-   mdpsol_sub = n.subscribe<std_msgs::Int32MultiArray>("/MDP/Solution", 10, mdpsol_Callback);
-   Odometery_sub=n.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, hsrbodom_Callback);
+  cmd_sub  = n.subscribe<std_msgs::String>("/CBA_cmd_str", 50,CmdStrCallback); 
+  cmd_sub2 = n.subscribe<std_msgs::Int8>("/CBA_cmd_int", 50,CmdIntCallback);
+  grid_sub = n.subscribe<cba_msgs::CBA_NavInfo>("/CBA_featureV", 20, NavInfo_Callback);  
+  unitgoal_sub = n.subscribe<std_msgs::Float32MultiArray>("/CBA_unit_goal", 10, Unitgoal_Callback);
+  mdpsol_sub = n.subscribe<std_msgs::Int32MultiArray>("/MDP/Solution", 10, mdpsol_Callback);
+  Odometery_sub=n.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, hsrbodom_Callback);
 
-   ros::Rate loop_rate(20);
+  ros::Rate loop_rate(20);
 
   while (ros::ok())
   {
 
-		 ros::spinOnce();
-   //  m_Manager.PublishMapInfo2Matlab(Matlab_Pub);
-      loop_rate.sleep();   
+    //Transformation example
+    // tf::StampedTransform transform;
+
+    // //listener.lookupTransform("/base_link", "/head_rgbd_sensor_rgb_frame",ros::Time(0), transform);
+    // try{
+    //   listener.lookupTransform("/base_link", "/head_rgbd_sensor_rgb_frame",ros::Time(0), transform);
+    // }
+    // catch (tf::TransformException &ex) {
+    //   ROS_ERROR("%s",ex.what());
+    //   ros::Duration(1.0).sleep();
+    //   continue;
+    // }
+    //  tf::Quaternion q = transform.getRotation();
+    //  printf("Quaternion : %.3lf, %.3lf,, %.3lf, %.3lf \n ",q[0],q[1],q[2],q[3]);
+
+    //    ROS_INFO("X pose %.3lf, y : %.3lf, z : %.3lf \n" ,  transform.getOrigin().x(),transform.getOrigin().y(),transform.getOrigin().z());
+    //    // ROS_INFO("Y pose %.3lf" , transform.getOrigin().y());
+    //    // ROS_INFO("Z pose %.3lf " , transform.getOrigin().z());
+    //  tfScalar yaw, pitch, roll;
+    //  transform.getBasis().getRPY(roll, pitch, yaw);
+
+    //  tf::Vector3 testvec;
+    //  geometry_msgs::Vector3Stamped gV, tV;
+     
+     // testvec.x=2.0;
+     // testvec.y=0.0;
+     // testvec.y=1.0;
+
+     // float xx=transform.getOrigin().x;
+    //  gV.vector.x = 2.0;
+    //  gV.vector.y = 0.0;
+    //  gV.vector.z = 0.0;
+    //  gV.header.stamp = ros::Time();
+    //  gV.header.frame_id = "/head_rgbd_sensor_rgb_frame";
+    //  listener.transformVector("/base_link", gV, tV);
+    //  // ROS_INFO("tg.xyz :  %.3lf, %.3lf,, %.3lf, ",tV.vector.x,tV.vector.y,tV.vector.z);
+
+    //  //pose test
+    // geometry_msgs::PoseStamped gPose,tPose;
+    // gPose.pose.position.x=2.0;
+    // gPose.pose.position.y=0.0;
+    // gPose.pose.position.z=0.0;
+
+    // gPose.pose.orientation.x=0.0;
+    // gPose.pose.orientation.y=0.0;
+    // gPose.pose.orientation.z=0.0;
+    // gPose.pose.orientation.w=1.0;
+
+    // listener.transformPose("/base_link", gPose, tPose);
+    // //  tf::Matrix3x3 mat(q);
+    // //  mat.getEulerYPR(&yaw, &pitch, &roll);
+    //  ROS_INFO("tg.xyz :  %.3lf, %.3lf,, %.3lf, ",tPose.pose.position.x,tPose.pose.position.y,tPose.pose.position.z);
+    // ROS_INFO("mat :  %.3lf, %.3lf,, %.3lf, ",mat[3],mat[4],mat[5]);
+    // ROS_INFO("mat :  %.3lf, %.3lf,, %.3lf, ",mat[6],mat[7],mat[8]);
+    /////////////////////////////////////
+
+
+
+  	 ros::spinOnce();
+     loop_rate.sleep();   
+
+
 
       // ros::spin();
    }

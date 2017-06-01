@@ -21,11 +21,14 @@
 
 #include <tf/transform_listener.h>
 #include <tf/transform_broadcaster.h>
+#include "tf/transform_listener.h"
+#include "tf/tf.h"
+#include <tf/transform_datatypes.h>
 
 #define TRIKEY_SIDE_WIDTH 0.6
 #define CELL_FEATURE_SIZE 0.7
 
-#define CELL_RESOLUTION 0.05
+#define CELL_RESOLUTION 0.5
 #define FEATURE_CELL_WIDTH 3 // DO NOT CHANGE
 #define FEATURE_CELL_HEIGHT 3 // DO NOT CHANGE
 
@@ -138,6 +141,8 @@ public:
 	ros::Publisher  proj_map_pub;
 	ros::Publisher  camera_viz_pub;
 	ros::Publisher  features_viz_pub;
+	ros::Publisher  human_marker_pub;
+	ros::Publisher  human_markerarray_pub;
 
 	ros::Publisher feature_map_pub;
 
@@ -203,6 +208,7 @@ public:
 
 	tf::TransformListener 			camera_to_world_listener;
 	tf::StampedTransform 			camera_to_world_transform;
+	tf::StampedTransform 			camera_to_baselink_transform;
 
 
 	tf::TransformListener 			map_to_world_listener;
@@ -265,17 +271,17 @@ public:
     int proj_map_identify_occupancy(int index);
     int static_map_identify_occupancy(int index);
     void broadcast_tf_world_to_map();
-
-
     void calculate_robotEnvFeatures();
 	void visualize_robotEnvFeatures();
 	void change_marker_prop(int occupancy_type, visualization_msgs::Marker &marker);
 
     void publish();
+    void humanpublish();
 	void publish_orig_proj_map();
 	void CBA_publish();
 	int  globalcoord_To_Dyn_map_index(float x_pos, float y_pos);
 	int  globalcoord_To_SScaled_map_index(float x_pos,float y_pos);
+	bool checkpointHuman(float x_pos,float y_pos);
 
     // Constructor Destructor Functions
 	GridMap();

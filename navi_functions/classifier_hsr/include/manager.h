@@ -107,6 +107,8 @@ public:
 	int          Local_Y_end;
 	int          Scale_constant;
 	bool		 boolMatlabsendData;
+	float		 robot_global_x_pos;
+    float 		 robot_global_y_pos;
 	float		 robot_theta_yaw;
 
 

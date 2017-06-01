@@ -143,6 +143,8 @@ void CBAManager::Init()
 		}
 
 	storedFeaturevector.resize(Feature_dim,0.0);
+	robot_global_x_pos=0.0;
+	robot_global_y_pos=0.0;
 	robot_theta_yaw=0.0;
 	Storedbaddecision=0;
 
@@ -319,7 +321,7 @@ vector<double> innervector(8,0.0);
 float yaw_angle_deg=0.0;
 float temp=0.0;
 float temp_deg=0.0;
-float temp_headingangle=0.0;
+float temp_Robot2Goal=0.0;
 temp=sqrt(m_Goal[0]*m_Goal[0]+m_Goal[1]*m_Goal[1]);
 vector<float> unitgoal(2,0.0);
 
@@ -337,8 +339,12 @@ if(nomr_v>0){
 }
 //ROS_INFO("normv : %.3lf, x : %.3lf , y : %.3lf \n",nomr_v,robotheadingdirection[0],robotheadingdirection[1]);
 
+//Find the angle from robot to Goal poistion
  if(abs(m_unitGoal[0])!=0)
-	temp_headingangle=atan(m_unitGoal[1]/m_unitGoal[0]);
+	temp_Robot2Goal=atan(m_unitGoal[1]/m_unitGoal[0]);
+
+
+
 
 //Innerproduct
 temp = m_unitGoal[0]*robotheadingdirection[0]+m_unitGoal[1]*robotheadingdirection[1];
@@ -347,7 +353,7 @@ float temp_norm = sqrt(pow(m_unitGoal[0],2)+pow(m_unitGoal[1],2))*sqrt(pow(robot
 temp =acos(temp);
 
 yaw_angle_deg=robot_theta_yaw*180/(3.141592);
-float temp_headingangle_deg=temp_headingangle*180/(3.141592);
+float temp_headingangle_deg=temp_Robot2Goal*180/(3.141592);
 
 
 temp_deg=temp_headingangle_deg-yaw_angle_deg;
@@ -361,6 +367,19 @@ unitgoal[0]=unitgoal[0]/nomr_v;
 unitgoal[1]=unitgoal[1]/nomr_v;
 
 int NearestGoal_dir=0;
+
+//These degrees are detrmined with atan(1/3), atan(3) : square grid 
+//
+//     |---|---|---|
+//	   | 4 | 3 | 2 |
+//	   |---|---|---|
+//	   | 5 | R | 1 |
+//	   |---|---|---|
+//	   | 6 | 7 | 8 |
+//	   |---|---|---|
+//
+///
+/// May be I should include Robot cell itself? 
 
 	if(temp_deg<18.1)
 	{
@@ -398,6 +417,8 @@ int NearestGoal_dir=0;
 
 		NearestGoal_dir=1;
 	 }
+
+ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between: %.3lf , NGoal_dir : %d ",yaw_angle_deg,temp_headingangle_deg,temp_deg,NearestGoal_dir);
 
 // unitgoal[0]=m_unitGoal[0]-robotheadingdirection[0];
 // unitgoal[1]=m_unitGoal[1]-robotheadingdirection[1];

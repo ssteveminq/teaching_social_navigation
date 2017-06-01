@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   trajectory_msgs
   control_msgs
   cba_msgs
+  tf
 )
 
 find_package(Eigen3 REQUIRED)
@@ -46,6 +47,7 @@ catkin_package(
   	sensor_msgs
     cba_msgs
   	message_runtime
+    tf
  )
 
 

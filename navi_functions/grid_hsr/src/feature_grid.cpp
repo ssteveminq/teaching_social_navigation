@@ -329,8 +329,8 @@ GridMap::GridMap(){
 	std::cout << num_of_cells_height << std::endl;	
 
 
-	num_of_cells_height=32;
-	num_of_cells_width=32;
+	num_of_cells_height=24;
+	num_of_cells_width=24;
 	
 	robot_world_x_pos=0.0;
 	robot_world_y_pos=0.0;
@@ -456,10 +456,8 @@ void GridMap::identify_static_grid_map_occupancy(){
 	for(size_t index = 0; index < static_msg->data.size(); index++){
    		int i = index % static_map_grid_width;
    		int j = floor(index / static_map_grid_width);
-
 		float x_coord_center = i*static_res + (static_res/2.0);
 		float y_coord_center = j*static_res + (static_res/2.0);			
-
 		int init_occupancy_type = static_map_identify_occupancy(index);
 
 		// Call BoundingBox Occupancy
@@ -544,7 +542,7 @@ int  GridMap::globalcoord_To_SScaled_map_index(float x_pos,float y_pos)
 	float reference_origin_x =-4;
 	float reference_origin_y =-4;
 	float Grid_STEP=0.5;
-	int num_grid=32;
+	int num_grid=24;
 
 	//for case of using static map
 	// double reference_origin_x =-3.5;
@@ -730,9 +728,48 @@ void GridMap::construct_robot_cells(){
 
 }
 
-
 void GridMap::publish(){
 	cell_array_pub.publish(cell_array);
+	//robot_cells_pub.publish(cell_array_dyn);
+
+}
+
+void GridMap::humanpublish(){
+	
+	visualization_msgs::Marker marker_human;
+	marker_human.header.frame_id = "/map"; 
+    marker_human.header.stamp = ros::Time::now();
+    marker_human.ns = "basic_shapes";
+    marker_human.id = 0;
+
+    uint32_t shape = visualization_msgs::Marker::CUBE;
+    marker_human.type = shape;
+
+    marker_human.pose.position.x = 1;
+    marker_human.pose.position.y = 1;
+    marker_human.pose.position.z = 1;
+
+    marker_human.pose.orientation.x = 0.0;
+    marker_human.pose.orientation.y = 0.0;
+    marker_human.pose.orientation.z = 0.0;
+    marker_human.pose.orientation.w = 1.0;
+
+    double temp_dist,temp_dist2,temp_dist3;
+    temp_dist  =0.25;
+    temp_dist2 =0.25;
+    temp_dist3 =0.5;
+
+    //ROS_INFO("temp dist : %.3lf, temp dist2 : %.3lf, temp dist3 : %.3lf",temp_dist,temp_dist2,temp_dist3);
+    marker_human.scale.x = std::abs(temp_dist);
+    marker_human.scale.y = std::abs(temp_dist2);
+    marker_human.scale.z = std::abs(temp_dist3);
+
+    marker_human.color.r = ((float) 160.0) / 255.0;
+    marker_human.color.g = ((float) 60.0) / 255.0;
+    marker_human.color.b = ((float) 200.0 )/ 255.0;
+    marker_human.color.a = 0.25;
+	// human_boxes_array_pub.publish(marker_human);
+	human_marker_pub.publish(marker_human);
 	//robot_cells_pub.publish(cell_array_dyn);
 
 }
@@ -763,20 +800,16 @@ void GridMap::change_cell_color(int marker_index, int occupancy_type){
 
 void GridMap::static_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
-
 		std::cout <<"static_Width: " << msg->info.width << std::endl;
 		std::cout <<"static_Height: " << msg->info.height << std::endl;
-
 		std::cout << "static_X origin:" << msg->info.origin.position.x << std::endl;
 		std::cout << "static_Y origin:" << msg->info.origin.position.y << std::endl;
 		std::cout <<"static_Resolution: " << msg->info.resolution << std::endl;		
-
 
 		// Copy Data;
 		static_map_grid = (*msg);
 		static_map_grid.header.stamp =  ros::Time::now	();
 		static_map_grid.header.frame_id = "map"; 
-
 		return;
 
 }
@@ -799,6 +832,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		// dynamic_map_grid.info.origin.position.x=-4.5;
 		// dynamic_map_grid.info.origin.position.y=-4.5;
 		// dynamic_map_grid.data.resize(140*140);
+
 
     	int datasize=9;
 
@@ -845,6 +879,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 
 		//current robot position
 		int numcount=0;
+		int humancount=0;
 		int mapidx=0;
 		//check occupancy from dynamic map___
 		std::map<int,float> MinDistMap;
@@ -876,6 +911,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 
 				//check each distance of small grids
 				numcount=0;
+				humancount=0;
 				
 				min_distance=100;
 				for(int column_j(0);column_j<height_ratio_cons;column_j++)
@@ -896,8 +932,15 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 						x_pos_set_dyn[mapidx].push_back(SM_global_pos_x);
 						y_pos_set_dyn[mapidx].push_back(SM_global_pos_y);
 
+						//check this point is in the human bounding box
+						bool isitHuman = checkpointHuman(SM_global_pos_x,SM_global_pos_y);
+						if(isitHuman)
+							 humancount++;
+
 						//ROS_INFO("coord x, coord y, map index : %d\n",dyn_map_idx);
 						float temp_occupancy= msg->data[dyn_map_idx];
+
+
 						if(temp_occupancy>0){
 
 						 	float dist_from_Robot  = pow(SM_global_pos_x-robot_world_x_pos,2)+pow(SM_global_pos_y-robot_world_y_pos,2);
@@ -914,9 +957,34 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 				 		min_distance=0;
 
 				 	MinDistMap[feature_map_idx]=min_distance;
-				 	occupancyCountMap[feature_map_idx]=numcount;
+				 	
+				 	if(humancount)
+				 		occupancyCountMap[feature_map_idx]=1000;
+				 	else
+				 		occupancyCountMap[feature_map_idx]=numcount;
+
 				 	mapidx++;
+
+
+
 		 }
+
+
+		 //Assuming that human global pose is 30, 20;
+		 // I have to conver this global coordinate to local dynamic window
+		 // 
+		 int human_global_x=10.2;
+		 int human_global_y=10.2;;
+
+		 int human_idx_local_dynamic_window=globalcoord_To_Dyn_map_index(human_global_x,human_global_y);
+		 map_free_cell_list = make_cell_list_marker(HUMAN_OCCUPIED);
+		 geometry_msgs::Point cell_loc;
+		cell_loc.x = human_global_x;
+	 	cell_loc.y = human_global_y;
+	 	cell_loc.z = 0.2;
+	 	map_free_cell_list.points.push_back(cell_loc);
+	 	cell_array.markers.push_back(map_free_cell_list);
+
 
 		 // Checking map index 
 		 // std::map<int,int>::iterator mapiter;
@@ -931,7 +999,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 
 		// 	cell_loc.x = x_pos_set[kk];
 		// 	cell_loc.y = y_pos_set[kk];
-		// 	cell_loc.z = 0.2;a
+		// 	cell_loc.z = 0.2;
 		// 	map_free_cell_list.points.push_back(cell_loc);
 		// 	}
 
@@ -968,6 +1036,8 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 
 			if(occupancyCountMap[i]>35)
 				state_feature[i]=OBSTACLE_OCCUPIED;
+			else if(occupancyCountMap[i]>999)
+				state_feature[i]=HUMAN_OCCUPIED;
 			else
 				state_feature[i]=0;
 
@@ -985,6 +1055,8 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		cba_feature_msg.width = num_of_cells_width;
 		cba_feature_msg.height = num_of_cells_height;
 		cba_feature_msg.int_robot_id=robot_pos_id;
+		cba_feature_msg.human_present=1;
+
 
 		//ROS_INFO("human_present:%d\n",cba_feature_msg.int_robot_id);
 
@@ -1023,6 +1095,33 @@ void GridMap::static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg)
 
 
 }
+
+bool GridMap::checkpointHuman(float x_pos,float y_pos)
+{
+	//let's make bounding box for human and check the global point for human
+	bool booldetectedhuman=1;					//this variable should be come from the detected box topic
+	float detected_human_x=1;
+	float detected_human_y=1;
+	float boundingbox_length_x=0.4;
+	float boundingbox_length_y=0.4;
+
+
+	//detected bounding box
+	if(booldetectedhuman)
+	{
+		if((x_pos>detected_human_x-0.5*boundingbox_length_x) && (x_pos<detected_human_x+0.5*boundingbox_length_x))
+			if((y_pos>detected_human_y-0.5*boundingbox_length_y) && (y_pos<detected_human_y+0.5*boundingbox_length_y))
+				return true;
+	}
+
+
+	return false;
+
+}
+
+
+
+
 
 int GridMap::globalcoord_To_Dyn_map_index(float x_pos, float y_pos)
 {
@@ -1076,20 +1175,19 @@ void GridMap::joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg){
 
 }
 
-
 void GridMap::human_detection_callback(const visualization_msgs::MarkerArray::ConstPtr &msg){
 	detected_human = true;
-	try{
-	  camera_to_world_listener.lookupTransform("/world", "/camera_link", ros::Time(0), camera_to_world_transform);
-    }
-    catch (tf::TransformException &ex) {
-      ROS_ERROR("%s",ex.what());
-      return;
-      //ros::Duration(1.0).sleep();
-    }
+	// try{
+	//   camera_to_world_listener.lookupTransform("/base_link", "/head_rgbd_sensor_rgb_frame", ros::Time(0), human_detection_callback);
+ //    }
+ //    catch (tf::TransformException &ex) {
+ //      ROS_ERROR("%s",ex.what());
+ //      return;
+ //      //ros::Duration(1.0).sleep();
+ //    }
 
 
-    index_of_human_occ_cells_updated_recently.clear();
+//     index_of_human_occ_cells_updated_recently.clear();
 
 	for(size_t i = 0; i < msg->markers.size(); i++){
 		visualization_msgs::Marker h;
@@ -1102,59 +1200,59 @@ void GridMap::human_detection_callback(const visualization_msgs::MarkerArray::Co
 		tf::Vector3 r_vec_camera_frame(h.pose.position.x, h.pose.position.y, h.pose.position.z);
 		tf::Stamped<tf::Vector3> stamped_r_vec_camera_frame(r_vec_camera_frame, ros::Time(0), h.header.frame_id);
 		tf::Vector3 r_vec_world_frame;
-		tf::Stamped<tf::Vector3> stamped_r_vec_world_frame(r_vec_world_frame,  ros::Time(0), "world");
+		tf::Stamped<tf::Vector3> stamped_r_vec_world_frame(r_vec_world_frame,  ros::Time(0), "map");
 
 		// Calculate Size of Box
 		tf::Vector3 r_size_camera_frame(h.scale.x, h.scale.y, h.scale.z);
 		tf::Stamped<tf::Vector3> stamped_r_size_camera_frame(r_size_camera_frame, ros::Time(0), h.header.frame_id);
 
 		tf::Vector3 r_size_world_frame;
-		tf::Stamped<tf::Vector3> stamped_r_size_world_frame(r_size_world_frame, ros::Time(0), "world");
+		tf::Stamped<tf::Vector3> stamped_r_size_world_frame(r_size_world_frame, ros::Time(0), "map");
 
 
 
-		camera_to_world_listener.transformVector("world", ros::Time(0), stamped_r_vec_camera_frame, "world", stamped_r_vec_world_frame);
-		camera_to_world_listener.transformVector("world", ros::Time(0), stamped_r_size_camera_frame, "world", stamped_r_size_world_frame);
+// 		camera_to_world_listener.transformVector("world", ros::Time(0), stamped_r_vec_camera_frame, "world", stamped_r_vec_world_frame);
+// 		camera_to_world_listener.transformVector("world", ros::Time(0), stamped_r_size_camera_frame, "world", stamped_r_size_world_frame);
 
-		float x_center = camera_to_world_transform.getOrigin().x() + stamped_r_vec_world_frame.getX();
-		float y_center = camera_to_world_transform.getOrigin().y() + stamped_r_vec_world_frame.getY();
-		float width = stamped_r_size_world_frame.getX();
-		float length = stamped_r_size_world_frame.getY();	
+// 		float x_center = camera_to_world_transform.getOrigin().x() + stamped_r_vec_world_frame.getX();
+// 		float y_center = camera_to_world_transform.getOrigin().y() + stamped_r_vec_world_frame.getY();
+// 		float width = stamped_r_size_world_frame.getX();
+// 		float length = stamped_r_size_world_frame.getY();	
 
-		bounding_box_to_occupany(x_center, y_center, std::abs(width), std::abs(length), HUMAN_OCCUPIED);			
+// 		bounding_box_to_occupany(x_center, y_center, std::abs(width), std::abs(length), HUMAN_OCCUPIED);			
 
-	}
+ 	}
 
-	update_human_occ_belief(HUMANS_DETECTED);
+// 	update_human_occ_belief(HUMANS_DETECTED);
 
-	human_cell_list.points.clear();
+// 	human_cell_list.points.clear();
 
-	typedef std::map<int, float>::iterator it_type;
-	for(it_type iterator = map_index_of_human_cells_to_prob.begin(); iterator !=  map_index_of_human_cells_to_prob.end(); iterator++) {
-	    //iterator->first = key
-	    //iterator->second = value
+// 	typedef std::map<int, float>::iterator it_type;
+// 	for(it_type iterator = map_index_of_human_cells_to_prob.begin(); iterator !=  map_index_of_human_cells_to_prob.end(); iterator++) {
+// 	    //iterator->first = key
+// 	    //iterator->second = value
 
-		int cell_index = iterator->first;
-		geometry_msgs::Point cell_loc;
+// 		int cell_index = iterator->first;
+// 		geometry_msgs::Point cell_loc;
 
-		int x_index = data[cell_index].grid_x_index;
-		int y_index = data[cell_index].grid_y_index;
+// 		int x_index = data[cell_index].grid_x_index;
+// 		int y_index = data[cell_index].grid_y_index;
 
-		cell_loc.x = (cell_x_width/2.0) + cell_x_width*x_index;
-		cell_loc.y = (cell_y_width/2.0) + cell_y_width*y_index;
-		cell_loc.z = 0.0;
+// 		cell_loc.x = (cell_x_width/2.0) + cell_x_width*x_index;
+// 		cell_loc.y = (cell_y_width/2.0) + cell_y_width*y_index;
+// 		cell_loc.z = 0.0;
 
-		int cell_occ_type = data[cell_index].cell_type;	
+// 		int cell_occ_type = data[cell_index].cell_type;	
 
-		human_cell_list.points.push_back(cell_loc);
+// 		human_cell_list.points.push_back(cell_loc);
 
-	}
-	human_cell_list.pose.position.z = 1.25/2.0;
-	human_cell_list.scale.z = 1.25;
-	human_cell_list.color.a = 0.4;
-	human_cells_pub.publish(human_cell_list);
+// 	}
+// 	human_cell_list.pose.position.z = 1.25/2.0;
+// 	human_cell_list.scale.z = 1.25;
+// 	human_cell_list.color.a = 0.4;
+// 	human_cells_pub.publish(human_cell_list);
 
-	detected_human = false;
+// 	detected_human = false;
 }
 
 
@@ -1569,7 +1667,6 @@ void GridMap::CBA_publish(){
 		int index = index_of_obstacle_occ_cells[i];
 		nav_info_msg.cell_occupancy_type[index] = OBSTACLE_OCCUPIED;
 	}	
-
 /*
 	// Assign Updated Occupancy Based on Sensor Readings
 	// Assign updated Free cell types:
@@ -1585,7 +1682,6 @@ void GridMap::CBA_publish(){
 		nav_info_msg.cell_occupancy_type[index] = OBSTACLE_OCCUPIED;
 	}
 */
-
 	if (robot_envFeatures.size() > 0){
 		nav_info_msg.state_type.push_back(robot_envFeatures[1].primary_type); // 1
 		nav_info_msg.state_type.push_back(robot_envFeatures[2].primary_type); // 2
@@ -1595,7 +1691,6 @@ void GridMap::CBA_publish(){
 		nav_info_msg.state_type.push_back(robot_envFeatures[6].primary_type); // 6	
 		nav_info_msg.state_type.push_back(robot_envFeatures[3].primary_type); // 7	
 		nav_info_msg.state_type.push_back(robot_envFeatures[0].primary_type); // 8	
-
 
 		nav_info_msg.state_distance.push_back(robot_envFeatures[1].min_distance_to_center); // 1
 		nav_info_msg.state_distance.push_back(robot_envFeatures[2].min_distance_to_center); // 2
@@ -1610,7 +1705,6 @@ void GridMap::CBA_publish(){
 			int index = index_of_robot_occ_cells[i];
 			nav_info_msg.robot_global_cell_indices.push_back(index);
 		}
-
 
 		if (map_index_of_human_cells_to_prob.size() > 0){
 			// Find nearest human cell:
@@ -1650,11 +1744,7 @@ void GridMap::CBA_publish(){
 		}else{
 			nav_info_msg.human_present = 0;			
 		}
-		
-
 	}
-
-
 	CBA_grid_pub.publish(nav_info_msg);
 }
 
@@ -1673,15 +1763,17 @@ int main(int argc, char **argv)
 */ 
   gridmap.CBA_grid_pub = gridmap.node.advertise<cba_msgs::CBA_NavInfo>("/CBA_featureV", 0); 
   gridmap.renew_dyn_grid_pub=gridmap.node.advertise<nav_msgs::OccupancyGrid>("grid/renew_dyn_map_cells", 1);
+  
+  gridmap.human_marker_pub=gridmap.node.advertise<visualization_msgs::Marker>( "/human_3D", 0 );
+  //gridmap.human_markerarray_pub=gridmap.node.advertise<visualization_msgs::MarkerArray>( "/humans_boxes_3D", 0 );
+
 
 //  gridmap.human_cells_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/human_cells", 1 );
-
-
   gridmap.trikey_state_sub = gridmap.node.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, boost::bind(&GridMap::joint_state_callback, &gridmap, _1));
   //gridmap.sensor_sub = gridmap.node.subscribe<sensor_msgs::Imu>("/hsrb/base_imu/data", 10, boost::bind(&GridMap::sensor_callback, &gridmap, _1));
 
 
-  // gridmap.human_bounding_boxes_sub = gridmap.node.subscribe<visualization_msgs::MarkerArray>("/human_boxes_3D", 10, boost::bind(&GridMap::human_detection_callback, &gridmap, _1));
+  //gridmap.human_bounding_boxes_sub = gridmap.node.subscribe<visualization_msgs::MarkerArray>("/human_boxes_3D", 10, boost::bind(&GridMap::human_detection_callback, &gridmap, _1));
   // gridmap.detected_humans_number_sub = gridmap.node.subscribe<std_msgs::Int8>("/detection/number_of_detected_humans", 10, boost::bind(&GridMap::number_detected_callback, &gridmap, _1));
  // gridmap.camera_viz_pub = gridmap.node.advertise<visualization_msgs::Marker>( "grid/cam_visibility_cells", 1 );
  // gridmap.features_viz_pub = gridmap.node.advertise<visualization_msgs::MarkerArray> ("grid/feature_cells", 1);
@@ -1691,6 +1783,9 @@ int main(int argc, char **argv)
   gridmap.static_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/static_obstacle_map_ref", 10, boost::bind(&GridMap::static_obs_ref_callback, &gridmap, _1));
   gridmap.dynamic_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/dynamic_obstacle_map_ref", 10, boost::bind(&GridMap::dynamic_obs_ref_callback, &gridmap, _1));
   gridmap.gridcell_sub=gridmap.node.subscribe<nav_msgs::GridCells>("/base_path_planner/inflated_static_obstacle_map", 10, boost::bind(&GridMap::static_gridcell_callback, &gridmap, _1));
+
+
+
 
 
   ros::Rate r(10); 
@@ -1706,7 +1801,8 @@ int main(int argc, char **argv)
 
 	// gridmap.broadcast_tf_world_to_map();
 	// //gridmap.publish_orig_proj_map();
-  	 	gridmap.publish();
+  	 gridmap.publish();
+  	 gridmap.humanpublish();
 	////gridmap.CBA_publish();
 	//gridmap.calculate_robotEnvFeatures();
 	// gridmap.visualize_robotEnvFeatures();

@@ -11,13 +11,19 @@
 #include "std_msgs/Int32MultiArray.h"
 #include "std_msgs/Float32MultiArray.h"
 #include "std_msgs/Int32.h"
+#include "std_msgs/Int8.h"
 #include "srBSpline.h"
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Path.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <nav_msgs/Odometry.h>
 #include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/Pose.h"
 #include "geometry_msgs/PointStamped.h"
 #include <tf/tf.h>
+#include <cmath>
+#include <cfloat>
 
 #define FREE_CELL 0
 #define St_OBS_CELL 1
@@ -25,19 +31,22 @@
 #define Human_CELL 3
 
 #define Grid_STEP 0.5
-#define Grid_Num_X 32
-#define Grid_Num_Y 32
+#define Grid_Num_X 24
+#define Grid_Num_Y 24
 
-#define Start_X 14 
-#define Start_Y 14
+#define Start_X 1 
+#define Start_Y 1
 //80 20
-#define Goal_X 22
-#define Goal_Y 5
+#define Goal_X 2
+#define Goal_Y 2
+
+#define DYN_OFFSET_X 0.5
+#define DYN_OFFSET_Y 2
 
 
 #define Num_action 8
 #define deltaMin 1E-05
-#define Maxiteration 250
+#define Maxiteration 300
 
 #define ra (-1.0)
 using namespace Eigen;
@@ -48,14 +57,16 @@ class MapParam
 public :
 
 	MapParam();
+	MapParam(int width_,int height_,double res_);
 	~MapParam();
 
-    int   		  	    map_step;
+    double   		  	map_step;
    	float 		  		m_cell_x_width;
 	float 		  		m_cell_y_width;
 	int   		  		Num_grid_X;
 	int   		  		Num_grid_Y;
 	int                 MapSize;
+	bool                boolDynamic;
 	
  
 
@@ -67,8 +78,9 @@ public :
 	std::vector<float>  NearestHuman_V;
 	std::vector<float>  RobotHeading_V;
 
-	void setWidth (int idth_);
+	void setWidth (int width_);
 	void setHeight(int height_);
+	void setResolution (double resolution);
 	void set_Cell_Info(std::vector<int> _inputCellInfo);
 	void set_OCC_Info(std::vector<int> _inputOCCInfo);
 	void set_Robot_Info(std::vector<int> _inputRobotInfo);
@@ -112,14 +124,19 @@ class MDPManager
  	vector<int>		  m_human_obs;
  	vector<int>		  cell_xy;
  	vector<int>       m_localoccupancy;
+ 	vector<int>       m_dynamic_occupancy;
+ 	vector<float>	  human_global;
+ 	int               human_callback_count;
 
 
 
  	std::vector<double> Map_orig_Vector;
 	std::vector<double> CurVector;
 	std::vector<double> GoalVector;
+	std::vector<double> HeadingVector;
 	std::vector<int> cur_coord;
 	std::vector<int> Goal_Coord;
+	std::vector<int> Human_Goal_Coord;
 	std::vector<int> MapCoord;
  	
  	double Ra;
@@ -134,6 +151,7 @@ class MDPManager
  	int publishnum;
  	int ReceiveData;
  	vector<int>  MDPPath;
+ 	vector<int>  Dyn_MDPPath;
 
  	srBSpline*           m_Spline;
  	srBSpline*           m_CubicSpline_x;
@@ -141,24 +159,37 @@ class MDPManager
 
  
  	bool    m_boolSolve;
+ 	int     dyn_path_num;
+ 	double	m_desired_heading;
  	
 	ros::NodeHandle  m_node; 	
 	ros::Publisher   obsmap_Pub;
 	ros::Publisher   Scaled_static_map_pub;
 	ros::Publisher   Scaled_static_map_path_pub;
+	ros::Publisher   Scaled_dynamic_map_pub;
+	ros::Publisher   Scaled_dynamic_map_path_pub;
+
 	ros::Publisher   Path_Pub;
 	ros::Subscriber  Localmap_sub;
 	ros::Publisher 	 SplinePath_pub;
 	ros::Publisher 	 SplinePath_pub2;
 	ros::Publisher   UnitGoalVec_pub;
 	ros::Publisher   MDPSol_pub;
+	ros::Publisher   RobotHeading_pub;
 	
 
 	//Static_mdp
 	int  scaling=12;
 	nav_msgs::OccupancyGrid Scaled_static_map;
 	nav_msgs::OccupancyGrid Scaled_static_map_path;
-	
+
+	nav_msgs::OccupancyGrid Scaled_dynamic_map;
+	nav_msgs::OccupancyGrid Scaled_dynamic_map_path;
+
+	bool       booltrackHuman;
+	nav_msgs::Path path;
+	nav_msgs::Path Pre_dynamicSplinePath;
+
 
 	
  	//functions
@@ -185,17 +216,28 @@ class MDPManager
  	char            getPolicychar(int policyidx);
  	void			printPath();
  	void 			generatePath();
+ 	void 			generate_dynamicPath();
  	void            pathPublish();
  	void  			updateMap(vector<int>& localmap_,vector<int>& local_start, vector<int>& local_goal);
  	void 			Local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
  	void 			static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+ 	void 			dynamic_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
  	void			ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr& msg);
  	void 			base_pose_callback(const nav_msgs::Odometry::ConstPtr& msg);
  	void 			Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& msg);
  	void 			Global2MapCoord(const vector<double>& _globalcoord, vector<int>& MapCoord);
- 	void    		CoordinateTransform_Rviz_Grid_Start(double _x, double _y);
-	void    		CoordinateTransform_Rviz_Grid_Goal(double _x, double _y);
+ 	void 			Human_target_cmdCallback(const std_msgs::Int8::ConstPtr& msg);
+ 	void			Human_MarkerCallback(const visualization_msgs::Marker::ConstPtr& msg);
+ 	void    		CoordinateTransform_Rviz_Grid_Start(double _x, double _y,int map_type);
+	void    		CoordinateTransform_Rviz_Grid_Goal(double _x, double _y,int map_type);
+	void 			CoordinateTransform_Rviz_Grid_Human(double _x, double _y,int map_type);
 	void            Mapcoord2GlobalCoord(const vector<int>& _Mapcoord, vector<double>& GlobalCoord);
+	void 			Mapcoord2DynamicCoord(const vector<int>& _Mapcoord, vector<double>& dynamicCoord);
 	void			MDPsolPublish();
+	void 			publishpaths();
+	bool            IsinDynamicMap(float global_x, float global_y);
+	bool            IsTargetMoved(float global_x, float global_y,float criterion);
+	void 			setDesiredHeading(double _heading);
+	double			getdistance(vector<double> cur, vector<double> goal);
 };
 

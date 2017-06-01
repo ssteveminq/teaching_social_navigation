@@ -11,7 +11,10 @@ Panels:
         - /Path1
         - /MarkerArray1
         - /GridCells1
-        - /Map4
+        - /Map3
+        - /Marker2
+        - /Marker3
+        - /MarkerArray2
       Splitter Ratio: 0.5
     Tree Height: 855
   - Class: rviz/Selection
@@ -40,7 +43,7 @@ Visualization Manager:
       Cell Size: 1
       Class: rviz/Grid
       Color: 160; 160; 164
-      Enabled: true
+      Enabled: false
       Line Style:
         Line Width: 0.03
         Value: Lines
@@ -53,7 +56,7 @@ Visualization Manager:
       Plane: XY
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -348,18 +351,9 @@ Visualization Manager:
       Draw Behind: false
       Enabled: true
       Name: Map
-      Topic: /grid/feature_map_cells
+      Topic: /scaled_dynamic_map
       Unreliable: false
       Value: true
-    - Alpha: 0.7
-      Class: rviz/Map
-      Color Scheme: map
-      Draw Behind: false
-      Enabled: false
-      Name: Map
-      Topic: /local_map_navigation_map/local_map
-      Unreliable: false
-      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -379,7 +373,7 @@ Visualization Manager:
       Radius: 0.03
       Shaft Diameter: 0.1
       Shaft Length: 0.1
-      Topic: /mdp_path_2
+      Topic: /mdp_path_dynamic
       Unreliable: false
       Value: true
     - Class: rviz/Marker
@@ -395,24 +389,49 @@ Visualization Manager:
       Marker Topic: /grid/cell_array_markers
       Name: MarkerArray
       Namespaces:
-        {}
+        grid_cells: true
       Queue Size: 100
       Value: true
     - Alpha: 1
       Class: rviz/GridCells
       Color: 25; 255; 0
-      Enabled: true
+      Enabled: false
       Name: GridCells
       Topic: /base_path_planner/inflated_static_obstacle_map
-      Value: true
+      Value: false
     - Alpha: 0.7
       Class: rviz/Map
       Color Scheme: map
       Draw Behind: false
-      Enabled: true
+      Enabled: false
       Name: Map
       Topic: /scaled_static_map_path
       Unreliable: false
+      Value: false
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /humanmarker_tracking
+      Name: Marker
+      Namespaces:
+        "": true
+        basic_shapes: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /human_target
+      Name: Marker
+      Namespaces:
+        basic_shapes: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /human_boxes_3D
+      Name: MarkerArray
+      Namespaces:
+        human_cells: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
@@ -438,22 +457,22 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 10.287
+      Distance: 16.881
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.06
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 1.87261
-        Y: 1.35552
-        Z: -2.4517
+        X: 1.44926
+        Y: 0.023104
+        Z: -2.39213
       Name: Current View
       Near Clip Distance: 0.01
-      Pitch: 1.3598
+      Pitch: 1.1148
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 2.94542
+      Yaw: 3.38542
     Saved: ~
 Window Geometry:
   Displays:
@@ -471,5 +490,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 2379
-  X: -5
-  Y: 106
+  X: 379
+  Y: 1700

@@ -44,6 +44,9 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 add_executable(mdpplanner src/global_planner.cpp ${SOURCES})
 target_link_libraries(mdpplanner ${catkin_LIBRARIES})
 
+add_executable(dynamic_planner src/dynamic_planner.cpp ${SOURCES})
+target_link_libraries(dynamic_planner ${catkin_LIBRARIES})
+
 add_executable(base_actionlib_mk src/base_actionlib.cpp)
 target_link_libraries(base_actionlib_mk ${catkin_LIBRARIES})
 

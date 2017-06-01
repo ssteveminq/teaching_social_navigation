@@ -39,7 +39,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "test");
 
   //subscribe only once for topic
-  nav_msgs::Path::ConstPtr msg = ros::topic::waitForMessage<nav_msgs::Path>("/mdp_path_2");
+  nav_msgs::Path::ConstPtr msg = ros::topic::waitForMessage<nav_msgs::Path>("/mdp_path");
   pathSize=msg->poses.size();
   x_.resize(pathSize,0.0);
   y_.resize(pathSize,0.0);
