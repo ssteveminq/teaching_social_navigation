@@ -60,7 +60,7 @@ while not rospy.is_shutdown():
    #     id += 1
 
    # Publish the MarkerArray
-   publisher.publish(marker)
+   # publisher.publish(marker)
    pub.publish(int_msg)
 
    count += 1

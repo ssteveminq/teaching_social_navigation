@@ -25,8 +25,6 @@ void CmdIntCallback(const std_msgs::Int8::ConstPtr& msg)
 {
 
 
-
-
 }
 
 

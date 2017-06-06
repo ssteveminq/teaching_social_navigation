@@ -36,19 +36,24 @@ void mdp_pathCallback(const nav_msgs::Path::ConstPtr& msg)
 
     pathSize=msg->poses.size();
 
-    x_.resize(pathSize,0.0);
-    y_.resize(pathSize,0.0);
-    t_.resize(pathSize,0.0);
+  if(pathSize>0)
+    {
+      x_.resize(pathSize,0.0);
+      y_.resize(pathSize,0.0);
+      t_.resize(pathSize,0.0);
 
      //save path from rosnode subscribe    
-   for(int k(0);k<pathSize;k++)
-   {
+    for(int k(0);k<pathSize;k++)
+    {
     x_[k]=msg->poses[k].pose.position.x;
     y_[k]=msg->poses[k].pose.position.y;
     t_[k]=msg->poses[k].pose.orientation.z;
     // printf("mdp path x-coord : %lf, y-coord : %lf \n", x_[k],y_[k]);
-   }
-   BoolUpadated=true;
+    }
+    BoolUpadated=true;
+    }
+    else
+     BoolUpadated=false; 
 }
 
 
@@ -176,10 +181,7 @@ int main(int argc, char **argv)
 
       }
       
-
-      // goal_head.trajectory.joint_names.push_back("head_pan_joint");
-      // goal_head.trajectory.joint_names.push_back("head_tilt_joint");
-      // goal_head.trajectory.points.resize(3);
+   
 
       // for(int k(0);k<3;k++){
       //   goal_head.trajectory.points[k].positions.resize(2);
@@ -194,9 +196,6 @@ int main(int argc, char **argv)
       //   goal_head.trajectory.points[k].time_from_start = ros::Duration(time_duration_head);
       // }
       // goal_head.trajectory.points[1].positions[0] = 0.25;
-      
- 
-
       // send message to the action server
       cli.sendGoal(goal);
       // cli_head.sendGoal(goal_head);
@@ -205,9 +204,7 @@ int main(int argc, char **argv)
       cli.waitForResult(ros::Duration(20.0));  
       //cli_head.waitForResult(ros::Duration(5.0));
 
-        BoolUpadated=false;  
-
-
+      BoolUpadated=false;  
       }
 
       // printf("Pathsize : %d",pathSize);

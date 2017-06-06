@@ -40,7 +40,7 @@
 #define Goal_X 2
 #define Goal_Y 2
 
-#define DYN_OFFSET_X 0.5
+#define DYN_OFFSET_X 2
 #define DYN_OFFSET_Y 2
 
 
@@ -67,8 +67,6 @@ public :
 	int   		  		Num_grid_Y;
 	int                 MapSize;
 	bool                boolDynamic;
-	
- 
 
 	std::vector<int>    Cell_Info;
 	std::vector<int>    OCC_Info;
@@ -239,5 +237,6 @@ class MDPManager
 	bool            IsTargetMoved(float global_x, float global_y,float criterion);
 	void 			setDesiredHeading(double _heading);
 	double			getdistance(vector<double> cur, vector<double> goal);
+	void 			publishZeropaths();
 };
 

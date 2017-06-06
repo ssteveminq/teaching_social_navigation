@@ -229,8 +229,7 @@ void MDPManager::Init()
 
 	 m_desired_heading=0.0;
 
-
-
+	 
 	 m_localoccupancy.resize(Grid_Num_X*Grid_Num_Y);
 	 m_dynamic_occupancy.resize(Num_Grids);
 
@@ -266,6 +265,8 @@ void MDPManager::Init()
 	Scaled_dynamic_map_path.data.resize(Scaled_dynamic_map_path.info.width*Scaled_dynamic_map_path.info.height);
 	booltrackHuman=false;
 	dyn_path_num=0;
+
+	 ROS_INFO("here2");
 
 }
 
@@ -381,15 +382,12 @@ void MDPManager::Human_target_cmdCallback(const std_msgs::Int8::ConstPtr& msg)
 
 	if(msg->data==1)
 	{
-		// if(dyn_path_num==0)
-		// {	
-			booltrackHuman=true;
-		//	ROS_INFO("human_target_callback_booltrackhuman");
-
-		//}	
+		booltrackHuman=true;
 	}
-	else
+	else{
 		booltrackHuman=false;
+
+	}
 }
 
 bool MDPManager::IsinDynamicMap(float global_x, float global_y)
@@ -435,17 +433,17 @@ double MDPManager::getdistance(vector<double> cur, vector<double> goal)
 
 void MDPManager::setDesiredHeading(double _heading)
 {
-
 	m_desired_heading=_heading;
 }
 
 void MDPManager::Human_MarkerCallback(const visualization_msgs::Marker::ConstPtr& msg)
 {
+
 	float human_target_goal_x=  msg->pose.position.x;
     float human_target_goal_y=  msg->pose.position.y;
 
     human_callback_count++;
-    if(human_callback_count<30)
+    if(human_callback_count<40)
     	return;
     else
     	human_callback_count=0;
@@ -517,8 +515,11 @@ void MDPManager::Human_MarkerCallback(const visualization_msgs::Marker::ConstPtr
 
 
     }
-    else
+    else{
+    
     	m_boolSolve=false;
+
+    }
 
 
 
@@ -700,7 +701,7 @@ void MDPManager::dynamic_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& ms
    		}
 
 
-   	Scaled_dynamic_map.data[Coord2CellNum(HumansurroundingCoord)]=0.0;
+   		Scaled_dynamic_map.data[Coord2CellNum(HumansurroundingCoord)]=0.0;
    	 }
 
 
@@ -721,6 +722,9 @@ void MDPManager::dynamic_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& ms
 
 void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
 {
+	ROS_INFO("staticmap callback start");
+
+
 
 	double small_pos_x, small_pos_y=0.0;
 	double dist_x,dist_y=0.0;
@@ -740,7 +744,13 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	Scaled_static_map.info.origin.position.y=-4;
 	Scaled_static_map.data.resize(Scaled_static_map.info.width*Scaled_static_map.info.height);
 
-
+	if(msg->data[0]!=NULL)
+	{
+		int datasize=msg->data.size();
+		ROS_INFO("staticmap size : %d",datasize);
+		for(int z(0);z<original_width*original_height;z++)
+			std::cout<<msg->data[z]<<std::endl;
+	
 	//for path map
 	// Scaled_static_map_path.info.width=32;
 	// Scaled_static_map_path.info.height= 32;
@@ -795,10 +805,13 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
     Scaled_static_map_pub.publish(Scaled_static_map);
 
 
-    //m_localoccupancy.resize()
-
+	
+    m_localoccupancy.resize(Scaled_static_map.data.size());
     for(int i(0);i<m_localoccupancy.size();i++)
     	m_localoccupancy[i]=Scaled_static_map.data[i];
+
+	}
+    ROS_INFO("staticmap callback start");
 
 }
 
@@ -1441,8 +1454,8 @@ void MDPManager::generate_dynamicPath()
        	Spline_y.push_back(ret_y);
      }
 
+    
     //Publish SPline Path
-  	
   	nav_msgs::Path dynamicSplinePath;
   	dynamicSplinePath.header.frame_id = "map";
   	geometry_msgs::PoseStamped pose;
@@ -1463,17 +1476,14 @@ void MDPManager::generate_dynamicPath()
 	}
 
 	 //SplinePath_pub.publish(path);
-
-
 	 SplinePath_pub2.publish(dynamicSplinePath);
-
-	 
+	
 	 // Pre_dynamicSplinePath=dynamicSplinePath;
 	 // Pre_dynamicSplinePath.header.frame_id=dynamicSplinePath.header.frame_id;
 	 // Pre_dynamicSplinePath.poses=dynamicSplinePath.poses;
 
 
-	 // Publish static map_path
+	 // Publish static map_path_grid
 	for(int j(0);j<Scaled_dynamic_map_path.data.size();j++)
 	 {	
 	 	Scaled_dynamic_map_path.data[j]=0.0;
@@ -1503,12 +1513,39 @@ void MDPManager::generate_dynamicPath()
 
 }
 
-void MDPManager::publishpaths()
+
+void MDPManager::publishZeropaths()
 {
 
- 	SplinePath_pub.publish(path);
-	//SplinePath_pub2.publish(Pre_dynamicSplinePath);
-	Scaled_dynamic_map_path_pub.publish(Scaled_dynamic_map_path);
+	  	nav_msgs::Path ZeroSplinePath;
+  		ZeroSplinePath.header.frame_id = "map";
+  		geometry_msgs::PoseStamped zeropose;
+  	
+	
+	    zeropose.pose.position.x=CurVector[0];
+	   	zeropose.pose.position.y=CurVector[1];
+	   	zeropose.pose.orientation = tf::createQuaternionMsgFromYaw(m_desired_heading);
+	   	ZeroSplinePath.poses.push_back(zeropose);
+	   	// printf("spline path2 index : %d, x coord : %lf , y coord : %lf \n", i,zeropose.pose.position.x,zeropose.pose.position.y);
+	
+	SplinePath_pub2.publish(ZeroSplinePath);
+
+}
+
+
+void MDPManager::publishpaths()
+{
+	// if(booltrackHuman)
+ 	// {
+ 		SplinePath_pub.publish(path);
+		//SplinePath_pub2.publish(Pre_dynamicSplinePath);
+		Scaled_dynamic_map_path_pub.publish(Scaled_dynamic_map_path);
+	// }
+	// else
+	// {	
+	// 	//publishZeropaths();
+
+	// }
 }
 
 //Generate path from solution

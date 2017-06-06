@@ -881,7 +881,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		int numcount=0;
 		int humancount=0;
 		int mapidx=0;
-		//check occupancy from dynamic map___
+		//check occupancy from dynamic map
 		std::map<int,float> MinDistMap;
 		float min_distance=100;
 
@@ -894,10 +894,9 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 				float robot_pos_y = robot_world_y_pos;				//global fame
 				double robot_theta = robot_world_theta_pos; 		//Updated in jointstatescallbackfunction()
 				//float robot_theta = 0.315231; //Updated in jointstatescallbackfunction()
-
-					
+				
 				float vector_pos_x= (-0.5*feature_map_grid.info.width+i)*feature_map_grid.info.resolution;           
-				float vector_pos_y= (-0.5*feature_map_grid.info.width+j)*feature_map_grid.info.resolution;
+				float vector_pos_y= (-0.5*feature_map_grid.info.height+j)*feature_map_grid.info.resolution;
 
 				float rotated_vector_pos_x=cos(robot_theta)*vector_pos_x-sin(robot_theta)*vector_pos_y;
 				float rotated_vector_pos_y=sin(robot_theta)*vector_pos_x+cos(robot_theta)*vector_pos_y;
@@ -1388,19 +1387,14 @@ void GridMap::update_human_occ_belief(int update_type){
 		}
 
 		camera_visibility_cell_list.points.clear();
-
 		std::map<int, int> camera_visible_world_indices = extract_world_indices_from_visible_camera_region(CAMERA_VIS_DEPTH, CAMERA_VIS_WIDTH, CAMERA_VIS_RES);
-
 		//std::cout << "size of cell list:" << camera_visible_world_indices.size() << std::endl;
-
 		typedef std::map<int, int>::iterator it_type;
 		for(it_type iterator = camera_visible_world_indices.begin(); iterator !=  camera_visible_world_indices.end(); iterator++){
 			int cell_index = iterator->first; 		
 
 			//std::cout << "index:" <<  cell_index << std::endl;
-
 			geometry_msgs::Point cell_loc;
-
 			int x_index = data[cell_index].grid_x_index;
 			int y_index = data[cell_index].grid_y_index;
 
