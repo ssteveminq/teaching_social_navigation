@@ -18,9 +18,341 @@ Human_Belief::Human_Belief(int numofhuman)
 }
 
 
-void Human_Belief::dyn_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+bool Human_Belief::Comparetwopoistions(std::vector<double> pos,std::vector<double> pos2)
 {
 
+	double temp_dist=0.0;
+	for(int i(0);i<2;i++)	
+	{
+		temp_dist+=pow((pos[i]-pos2[i]),2);
+	}
+	temp_dist=sqrt(temp_dist);
+
+	if(temp_dist<Same_POS_diff)
+		return true;
+	
+
+	return false;
+
+}
+
+bool Human_Belief::Comparetwopoistions(std::vector<double> pos,std::vector<double> pos2, double criterion)
+{
+
+	double temp_dist=0.0;
+	for(int i(0);i<2;i++)	
+	{
+		temp_dist+=pow((pos[i]-pos2[i]),2);
+	}
+	temp_dist=sqrt(temp_dist);
+
+	if(temp_dist<criterion)
+		return true;
+	
+
+	return false;
+
+
+}
+
+
+void Human_Belief::SetTarget()
+{
+	//compare yolo detection and leg detector and survive only they are similar to each other
+	//Cur_detected_human
+	//Cur_existed_human
+	m_leg_idx_set.clear();
+	//human_occupied_leg_idx.clear();
+	int num_yolo_detected_people= Cur_detected_human.size();
+	int num_leg_detected_people= Cur_leg_human.size();
+
+	if(num_leg_detected_people >0 && num_yolo_detected_people>0)
+	{
+		for(int i(0);i<num_yolo_detected_people;i++)
+		{
+			for(int j(0);j<num_leg_detected_people;j++)
+			{
+				if(Comparetwopoistions(Cur_detected_human[i],Cur_leg_human[j]))
+					{
+						//ROS_INFO("leg index : %d ", j);
+						m_leg_idx_set.push_back(j);
+					}
+			}
+		}
+
+		Cur_leg_yolo_human.clear();
+		for(int i(0);i<m_leg_idx_set.size();i++)
+		{
+			std::vector<double> temp_detected(2,0.0);
+			for(int j(0);j<2;j++)
+			{
+				temp_detected[j]=Cur_leg_human[m_leg_idx_set[i]][j];
+			
+			}
+			Cur_leg_yolo_human.push_back(temp_detected);
+
+			// int human_leg_mapidx=CoordinateTransform_Global2_staticMap(temp_detected[0],temp_detected[1]);
+			// human_occupied_leg_idx.push_back(human_leg_mapidx);
+		}
+	}
+
+}
+
+
+void Human_Belief::edge_leg_callback(const geometry_msgs::PoseArray::ConstPtr& msg)
+{
+	//ROS_INFO("edge callback");
+	// human_occupied_leg_idx.clear();
+	Cur_leg_human.clear();
+	int num_leg_detected = msg->poses.size();
+	Cur_leg_human.resize(num_leg_detected);
+
+	for(int i(0);i<num_leg_detected;i++)
+	{
+		geometry_msgs::Vector3Stamped gV, tV;
+
+	    gV.vector.x = msg->poses[i].position.x;
+	    gV.vector.y = msg->poses[i].position.y;
+	    gV.vector.z = 1.0;
+
+	    // std::cout<<"x :"<<_x<<"_y:"<<_y<<"_z:"<<_z<<std::endl;
+	    gV.header.stamp = ros::Time();
+	    gV.header.frame_id = "/base_range_sensor_link";
+	    listener.transformVector("/map", gV, tV);
+
+		Cur_leg_human[i].resize(2,0.0);
+		Cur_leg_human[i][0]=tV.vector.x;
+		Cur_leg_human[i][1]=tV.vector.y;
+
+
+		int human_leg_mapidx=CoordinateTransform_Global2_staticMap(Cur_leg_human[i][0],Cur_leg_human[i][1]);
+		human_occupied_leg_idx.push_back(human_leg_mapidx);
+
+
+		if(angle_people_set.size()>0)
+		{
+			if(Comparetwopoistions(Cur_leg_human[i],leg_target, 0.4))
+			{
+				leg_target[0]=Cur_leg_human[i][0];
+				leg_target[1]=Cur_leg_human[i][1];
+
+				geometry_msgs::Vector3Stamped gV, tV;
+
+			    gV.vector.x = leg_target[0];
+			    gV.vector.y = leg_target[1];
+			    gV.vector.z = 1.0;
+
+			    gV.header.stamp = ros::Time();
+			    gV.header.frame_id = "/map";
+			    
+				listener.transformVector("/base_link", gV, tV);
+				double temp_angle = atan(tV.vector.y/tV.vector.x);
+
+				angle_people_set.clear();
+				angle_people_set.push_back(temp_angle);
+				setViewpointTarget(leg_target);
+			}
+
+			return;
+		}
+
+		// human_occupied_leg_idx
+
+		// if(targetup>0) //once initialized
+		// {
+		// 	if(Comparetwopoistions(Cur_leg_human[i],leg_target, 0.15) && Comparetwopoistions(Cur_leg_human[i],Track_human_target, 0.25))
+		// 		{
+		// 			leg_target[0]=Cur_leg_human[i][0];
+		// 			leg_target[1]=Cur_leg_human[i][1];
+
+		// 		}
+
+		// }
+
+	}
+
+	put_human_occ_map_leg();
+	SetTarget();
+
+	setNearestHuman_leg();
+	
+	//setNearestHuman();	
+
+	m_leg_updateiter++;
+}
+
+void Human_Belief::Publish_human_boxes()
+{
+
+	human_boxes_array.markers.clear();
+	if(Cur_detected_human.size()>0)
+	{
+		for(int i(0);i<Cur_existed_human.size();i++)
+		{
+			visualization_msgs::Marker marker_human;
+			marker_human.header.frame_id = "/map"; 
+		    marker_human.header.stamp = ros::Time::now();
+		    marker_human.ns = "human_leg_boxes";
+		    marker_human.id = i;
+
+		    uint32_t shape = visualization_msgs::Marker::SPHERE;
+		    marker_human.type = shape;
+
+		    marker_human.pose.position.x = Cur_existed_human[i][0];
+		    marker_human.pose.position.y = Cur_existed_human[i][1];
+		    marker_human.pose.position.z = 1;
+
+		    marker_human.pose.orientation.x = 0.0;
+		    marker_human.pose.orientation.y = 0.0;
+		    marker_human.pose.orientation.z = 0.0;
+		    marker_human.pose.orientation.w = 1.0;
+
+		    double temp_dist,temp_dist2,temp_dist3;
+		    temp_dist  =0.5;
+		    temp_dist2 =0.5;
+		    temp_dist3 =0.5;
+
+		    //ROS_INFO("temp dist : %.3lf, temp dist2 : %.3lf, temp dist3 : %.3lf",temp_dist,temp_dist2,temp_dist3);
+		    marker_human.scale.x = std::abs(temp_dist);
+		    marker_human.scale.y = std::abs(temp_dist2);
+		    marker_human.scale.z = std::abs(temp_dist3);
+
+		    marker_human.color.r = 0.3;
+		    marker_human.color.g = 0.6;
+		    marker_human.color.b = 1.0;
+		    marker_human.color.a = 0.85;
+
+		    human_boxes_array.markers.push_back(marker_human);
+	    }
+
+	    Human_boxes_pub.publish(human_boxes_array);
+
+	}
+
+
+
+
+
+}
+
+
+void Human_Belief::laser_scan_callback(const sensor_msgs::LaserScan::ConstPtr& msg)
+{
+
+	// std::cout<<"laser height "<<msg->height<<std::endl;
+	// std::cout<<"laser width "<<msg->width<<std::endl;
+	// std::cout<<"laser point step "<<msg->point_step<<std::endl;
+	// std::cout<<"laser row step  "<<msg->row_step<<std::endl;
+	// std::cout<<"laser data size "<<laser_pcl_size<<std::endl;
+
+	int datasize = msg->ranges.size();
+	int datasize_intensity = msg->intensities.size();
+	// std::cout<<"laser data size "<<datasize<<std::endl;	
+
+	sensor_msgs::LaserScan new_laser_msg;
+	new_laser_msg.header.stamp=ros::Time::now();
+	new_laser_msg.header.frame_id= "base_range_sensor_link"; 
+
+	new_laser_msg.angle_min       = msg->angle_min;      
+	new_laser_msg.angle_max       = msg->angle_max;
+	new_laser_msg.angle_increment = msg->angle_increment;
+	new_laser_msg.time_increment  = msg->time_increment;
+	new_laser_msg.scan_time       = msg->scan_time;
+	new_laser_msg.range_min       = msg->range_min;
+	new_laser_msg.range_max       = msg->range_max;
+	
+	new_laser_msg.ranges.resize(datasize);
+	new_laser_msg.intensities.resize(datasize_intensity,0.0);
+	
+
+	double criterion_angle = 0.0;
+
+	if(angle_people_set.size()>0)
+		criterion_angle=angle_people_set[0];
+
+	// std::cout<<criterion_angle<<std::endl;		
+	
+	int angle_min_idx=ConvertAngle2LaserIdx(criterion_angle-50*MATH_PI/180);
+	int angle_max_idx=ConvertAngle2LaserIdx(criterion_angle+50*MATH_PI/180);
+
+
+	// std::cout<<"angle min idx :"<<angle_min_idx<<", angle max idx : "<<angle_max_idx<<std::endl;
+	for(int i(angle_min_idx);i<angle_max_idx;i++)
+	{
+			new_laser_msg.ranges[i]=msg->ranges[i];
+			//new_laser_msg.intensities[i]=msg->intensities[i];
+	}
+
+
+	human_laser_scan_pub.publish(new_laser_msg);
+
+
+}
+
+
+void Human_Belief::laser_pcl_callback(const sensor_msgs::PointCloud2 ::ConstPtr& msg)
+{
+
+
+	// pcl::fromROSMsg(*msg, *cloud);
+	
+	int laser_pcl_size=msg->data.size();
+
+	sensor_msgs::PointCloud2 pcl2_msg;
+	// pcl2_msg.header=msg->header;
+	pcl2_msg.header.stamp=ros::Time::now();
+	pcl2_msg.header.frame_id= "base_range_sensor_link"; 
+
+	pcl2_msg.fields = msg->fields;
+	pcl2_msg.width=msg->width;
+	pcl2_msg.height=msg->height;
+	pcl2_msg.is_bigendian=msg->is_bigendian;
+	pcl2_msg.row_step=msg->row_step;
+	pcl2_msg.point_step=msg->point_step;
+	pcl2_msg.is_dense=msg->is_dense;
+	pcl2_msg.data.resize(laser_pcl_size,0.0);
+
+
+
+	double criterion_angle = 0.0;
+
+	if(angle_people_set.size()>0)
+		criterion_angle=angle_people_set[0];		
+	
+
+	double min_angle=criterion_angle-15*MATH_PI/180;
+	double max_angle =criterion_angle+15*MATH_PI/180;
+
+	if(min_angle<LASER_ANGLE_MIN);
+		min_angle=LASER_ANGLE_MIN;
+	if(min_angle>LASER_ANGLE_MAX);
+		max_angle=LASER_ANGLE_MAX;
+
+
+	int angle_min_idx=ConvertAngle2LaserIdx(min_angle);
+	int angle_max_idx=ConvertAngle2LaserIdx(max_angle);
+
+	for(int i(angle_min_idx);i<angle_max_idx;i++)
+	{
+			pcl2_msg.data[i]= msg->data[i];
+	}
+
+
+	human_laser_pub.publish(pcl2_msg);
+
+}
+
+int Human_Belief::ConvertAngle2LaserIdx(double angle_rad)
+{
+
+	int res = round((angle_rad-LASER_ANGLE_MIN)/LASER_ANGLE_STEP);
+
+	return res;
+}
+
+
+void Human_Belief::dyn_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+{
 	//update dynamic map info
 	dynamic_belief_map.info.width  = msg->info.width;
 	dynamic_belief_map.info.height = msg->info.height;
@@ -29,7 +361,6 @@ void Human_Belief::dyn_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	dynamic_belief_map.info.origin.position.y =msg->info.origin.position.y;
 	dynamic_belief_map.data.resize(dynamic_belief_map.info.width*dynamic_belief_map.info.width);
 	
-
 	//Initialize for dyn_map_occupancy
 	if(m_receiveiter==0)
 	{
@@ -39,10 +370,8 @@ void Human_Belief::dyn_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	}
 	else{
 
-
 	}
 	 
-
 	 m_dyn_occupancy.resize(msg->data.size());
 	 for(int i(0);i<msg->data.size();i++)
 	 {
@@ -94,8 +423,7 @@ int Human_Belief::CoordinateTransform_Global2_staticMap(double global_x, double 
  	return static_map_idx;
  	//Save to human_ouccupied_index
  	// human_occupied_idx.push_back(static_map_idx);
- 	
- 
+ 	 
 
 
 }
@@ -124,6 +452,65 @@ void Human_Belief::CoordinateTransform_Global2_dynMap(double global_x, double gl
  	return;
 }
 
+
+void Human_Belief::put_human_occ_map_leg()
+{
+	if(human_belief_map.data.size()>0){
+		for(int i(0);i<human_occupied_leg_idx.size();i++){
+
+		 	human_belief_map.data[human_occupied_leg_idx[i]]=60.0;
+		}
+
+	}
+
+}
+
+void Human_Belief::put_human_surrounding_beliefmap(int idx)
+{
+
+	int next_idx=0;
+	int mapsize=human_belief_map.info.width*human_belief_map.info.height;
+
+	for(int i(0);i<8;i++){
+		switch(i){
+		case 0:	next_idx=idx-human_belief_map.info.width-1;
+			break;
+		case 1:	next_idx=idx-human_belief_map.info.width;
+			break;
+		case 2:	next_idx=idx-human_belief_map.info.width+1;
+			break;
+		case 3:	next_idx=idx-1;
+			break;
+		case 4: next_idx=idx+1;
+			break;
+		case 5:	next_idx=idx+human_belief_map.info.width-1;
+			break;
+		case 6: next_idx=idx+human_belief_map.info.width;
+			break;
+		case 7:	next_idx=idx+human_belief_map.info.width+1;
+			break;
+		}
+
+		if(next_idx>0 && next_idx<mapsize)
+			human_belief_map.data[next_idx]=30.0;
+	}
+	
+}
+
+void Human_Belief::put_human_occ_map_yolo()
+{
+	if(human_belief_map.data.size()>0){
+		for(int i(0);i<human_occupied_idx.size();i++){
+
+		 	human_belief_map.data[human_occupied_idx[i]]=80.0;
+		 	put_human_surrounding_beliefmap(human_occupied_idx[i]);
+
+		}
+
+	}
+
+}
+
 void Human_Belief::put_human_occ_map()
 {
 	//if dynamic_map is initialized, put human idx to dynamic_belief_map
@@ -131,24 +518,31 @@ void Human_Belief::put_human_occ_map()
 		for(int i(0);i<human_occupied_idx.size();i++){
 
 		 	human_belief_map.data[human_occupied_idx[i]]=100.0;
-
 		}
+
 	}
 }
 
 void Human_Belief::Human_MarkerarrayCallback(const visualization_msgs::MarkerArray::ConstPtr& msg)
 {
+
+	
+	// if(m_yolo_recieveiter<30)
+	// 	return;
+	// else
+	// 	m_yolo_recieveiter=0;
+
+	//Human marker from yolo detection
 	human_occupied_idx.clear();
 	Cur_detected_human.clear();
+	
 
 	int num_of_detected_human=msg->markers.size();
 	//ROS_INFO("number of detected human : %d",num_of_detected_human);
 	Cur_detected_human.resize(num_of_detected_human);
 	
-
 	for(int i(0);i<num_of_detected_human;i++)
 	{
-		
 		geometry_msgs::Vector3Stamped gV, tV;
 
 	    gV.vector.x = msg->markers[i].pose.position.x;
@@ -157,38 +551,103 @@ void Human_Belief::Human_MarkerarrayCallback(const visualization_msgs::MarkerArr
 
 	    // std::cout<<"x :"<<_x<<"_y:"<<_y<<"_z:"<<_z<<std::endl;
 	    gV.header.stamp = ros::Time();
-	    gV.header.frame_id = "/base_link";
-	    listener.transformVector("/map", gV, tV);
-
-
+	    gV.header.frame_id = "/map";
+	    
 		Cur_detected_human[i].resize(2,0.0);
-		Cur_detected_human[i][0]=tV.vector.x;
-		Cur_detected_human[i][1]=tV.vector.y;
-
-
-		int human_mapidx=CoordinateTransform_Global2_staticMap(Cur_detected_human[i][0],Cur_detected_human[i][1]	);
+		Cur_detected_human[i][0]=msg->markers[i].pose.position.x;
+		Cur_detected_human[i][1]=msg->markers[i].pose.position.y;
+		// Cur_detected_human[i][0]=tV.vector.x;
+		// Cur_detected_human[i][1]=tV.vector.y;
+		int human_mapidx=CoordinateTransform_Global2_staticMap(Cur_detected_human[i][0],Cur_detected_human[i][1]);
 		human_occupied_idx.push_back(human_mapidx);
-		std::cout<<"human index : "<<human_mapidx<<std::endl;
+		//std::cout<<"human index : "<<human_mapidx<<std::endl;
 		//ROS_INFO("Human idx : %d, Received position x : %.3lf, y : %.3lf",i, msg->markers[i].pose.position.x,msg->markers[i].pose.position.y);
+
+
 	}
 
-	put_human_occ_map();
-	setNearestHuman();
+	put_human_occ_map_yolo();
+
+	//setNearestHuman();
+
+}
+
+void Human_Belief::publish_headscan()
+{
+
+	std_msgs::Int8 headscan_msg;
+	headscan_msg.data=9;
+
+	// Headscan_pub.publish(headscan_msg);
+
+}
+
+void Human_Belief::setNearestHuman_leg()
+{
+
+	if(angle_people_set.size()==0)
+	 {
+		angle_people_set.clear();
+		std::vector<double> Distanceset;
+		// Distanceset.resize(Cur_detected_human.size(),0.0);
+		Distanceset.resize(Cur_leg_yolo_human.size(),0.0);
+		
+		double minDistance=200.0;
+		int    minDistance_Idx=0;
+
+		if(Cur_leg_yolo_human.size()>0){
+			for(int i(0);i<Cur_leg_yolo_human.size();i++)
+			{
+				// Distanceset[i]=getDistance(Cur_detected_human[i][0],Cur_detected_human[i][1]);
+				Distanceset[i]=getDistance(Cur_leg_yolo_human[i][0],Cur_leg_yolo_human[i][1]);
+				
+				if(minDistance>Distanceset[i])
+					{
+						minDistance=Distanceset[i];
+						minDistance_Idx=i;
+					}
+			}
+
+			leg_target[0]=Cur_leg_yolo_human[minDistance_Idx][0];
+			leg_target[1]=Cur_leg_yolo_human[minDistance_Idx][1];
+
+			geometry_msgs::Vector3Stamped gV, tV;
+
+		    gV.vector.x = leg_target[0];
+		    gV.vector.y = leg_target[1];
+		    gV.vector.z = 1.0;
+
+		    gV.header.stamp = ros::Time();
+		    gV.header.frame_id = "/map";
+		    
+			listener.transformVector("/base_link", gV, tV);
+			double temp_angle = atan(tV.vector.y/tV.vector.x);
+			angle_people_set.push_back(temp_angle);
+			setViewpointTarget(leg_target);
+			// ROS_INFO("leg target: %.3lf, y : %.3lf",leg_target[0],leg_target[1]);
+			
+		}
+
+	 }
 }
 
 void Human_Belief::setNearestHuman()
 {
-
+	if(angle_people_set.size()==0)
+	{
 	std::vector<double> Distanceset;
-	Distanceset.resize(Cur_detected_human.size(),0.0);
+	//angle_people_set.clear();
+	// Distanceset.resize(Cur_detected_human.size(),0.0);
+	Distanceset.resize(Cur_existed_human.size(),0.0);
 	
 	double minDistance=200.0;
 	int    minDistance_Idx=0;
 
-	if(Cur_detected_human.size()>0){
-		for(int i(0);i<Cur_detected_human.size();i++)
+	if(Cur_existed_human.size()>0){
+		for(int i(0);i<Cur_existed_human.size();i++)
 		{
-			Distanceset[i]=getDistance(Cur_detected_human[i][0],Cur_detected_human[i][1]);
+			// Distanceset[i]=getDistance(Cur_detected_human[i][0],Cur_detected_human[i][1]);
+			Distanceset[i]=getDistance(Cur_existed_human[i][0],Cur_existed_human[i][1]);
 			
 			if(minDistance>Distanceset[i])
 				{
@@ -197,21 +656,135 @@ void Human_Belief::setNearestHuman()
 				}
 		}
 
+		Human_target_candidate[0]=Cur_existed_human[minDistance_Idx][0];
+		Human_target_candidate[1]=Cur_existed_human[minDistance_Idx][1];
 
-		Human_target_Pos[0]=Cur_detected_human[minDistance_Idx][0];
-		Human_target_Pos[1]=Cur_detected_human[minDistance_Idx][1];
 
+			
 		track_cmd.data=1;
-
+		detect_iters=0;
 	}
 	else{
-		track_cmd.data=0;
+		track_cmd.data=1;
 
+		detect_iters++;
+		if(detect_iters>5000)
+		{
+			ROS_INFO("Head scan required");
+			detect_iters=0;
+		//	publish_headscan();
+		}
+
+
+		//TODO : when robo reach the people , we can do it
 	}
 
+	}
+}
+
+
+bool Human_Belief::IsTargetMoved(const std::vector<double> possible_target_pos, float criterion)
+{
+	float temp_dist=0.0;
+	temp_dist= pow(leg_target[0]-possible_target_pos[0],2);
+	temp_dist+=pow(leg_target[1]-possible_target_pos[1],2);
+	temp_dist=sqrt(temp_dist);
+
+	if(temp_dist>criterion)
+		return true;
+	else
+		return false;
+
+}
+
+void Human_Belief::setViewpointTarget(const std::vector<double> pos)
+{
+
+	geometry_msgs::Point GazePoint_msg;
+
+
+	if(pos[0]==0.0 && pos[1]==0.0)
+	{
+		GazePoint_msg.x=2.0;
+		GazePoint_msg.y=0.0;	
+	}
+	else
+	{
+	
+	GazePoint_msg.x=pos[0];
+	GazePoint_msg.y=pos[1];
+	
+	}
+
+	GazePoint_msg.z=1.0;
+
+	Gaze_point_pub.publish(GazePoint_msg);
+
+	std_msgs::Bool activateGaze_msg;
+	activateGaze_msg.data=true;
+
+	Gaze_activate_pub.publish(activateGaze_msg);
+
+	// ros::Duration(0.5).sleep();
 
 
 }
+
+
+
+void Human_Belief::UpdateTarget()
+{
+	// if(m_updateiter>MAX_UPDATE_ITER)
+	//  {	
+	// 	// ROS_INFO("iter");
+
+	// 	if(targetup==0)
+	// 	{
+	// 		// leg_target[0]=leg_target[0];
+	// 		// leg_target[1]=leg_target[1];
+	
+	// 		targetup++;
+	// 		m_updateiter=0;
+	// 		setViewpointTarget(leg_target);
+	
+	// 		//setlegtarget
+	// 		// leg_target[0]=Track_human_target[0];
+	// 		// leg_target[1]=Track_human_target[1];
+	// 	}
+
+	// 	 if(!IsTargetMoved(leg_target,2.0))
+	// 	 {
+	// 		leg_target[0]=leg_target[0];
+	// 		leg_target[1]=leg_target[1];
+	// 		targetup++;
+			
+	// 		if(m_viewupdateiter>MAX_VIEW_UPDATE_ITER)
+	// 			{
+	// 				// if(Cur_detected_human.size()==0)
+	// 				// 	setViewpointTarget(leg_target);
+	// 				// else
+	// 					setViewpointTarget(leg_target);
+					
+
+	// 				m_viewupdateiter=0;
+
+	// 				//setlegtarget
+	// 				// leg_target[0]=Track_human_target[0];
+	// 				// leg_target[1]=Track_human_target[1];
+	// 			}
+
+	// 	}
+
+	// 	m_updateiter=0;	
+	// }
+
+
+	// m_updateiter++;
+	// m_viewupdateiter++;
+
+
+	}
+
 
 void Human_Belief::Publish_human_target()
 {
@@ -225,8 +798,8 @@ void Human_Belief::Publish_human_target()
 
 	if(track_cmd.data>0){
 	//publish marker
-		marker_human.pose.position.x = Human_target_Pos[0];
-	    marker_human.pose.position.y = Human_target_Pos[1];
+		marker_human.pose.position.x = Track_human_target[0];
+	    marker_human.pose.position.y = Track_human_target[1];
 	    marker_human.pose.position.z = 1;
 
 	    marker_human.pose.orientation.x = 0.0;
@@ -244,22 +817,68 @@ void Human_Belief::Publish_human_target()
 	    marker_human.scale.y = std::abs(temp_dist2);
 	    marker_human.scale.z = std::abs(temp_dist3);
 
-	    marker_human.color.r = 1.0;
+	    marker_human.color.r = 0.0;
 	    marker_human.color.g = 1.0;
-	    marker_human.color.b = 0.2;
+	    marker_human.color.b = 0.0;
 	    marker_human.color.a = 0.85;
-
 
 		human_target_pub.publish(marker_human);
 		human_target_Intcmd_pub.publish(track_cmd);	
-
-
 	}
+
+
+	visualization_msgs::Marker marker_leg_target;
+	marker_leg_target.header.frame_id = "/map"; 
+    marker_leg_target.header.stamp = ros::Time::now();
+    marker_leg_target.id = 0;
+    marker_leg_target.type = visualization_msgs::Marker::SPHERE;
+
+	
+	//publish marker
+		marker_leg_target.pose.position.x = leg_target[0];
+	    marker_leg_target.pose.position.y = leg_target[1];
+	    marker_leg_target.pose.position.z = 1;
+
+	    marker_leg_target.pose.orientation.x = 0.0;
+	    marker_leg_target.pose.orientation.y = 0.0;
+	    marker_leg_target.pose.orientation.z = 0.0;
+	    marker_leg_target.pose.orientation.w = 1.0;
+
+	      //ROS_INFO("temp dist : %.3lf, temp dist2 : %.3lf, temp dist3 : %.3lf",temp_dist,temp_dist2,temp_dist3);
+	    marker_leg_target.scale.x = std::abs(0.5);
+	    marker_leg_target.scale.y = std::abs(0.5);
+	    marker_leg_target.scale.z = std::abs(0.5);
+
+	    marker_leg_target.color.r = 1.0;
+	    marker_leg_target.color.g = 0.0;
+	    marker_leg_target.color.b = 0.2;
+	    marker_leg_target.color.a = 0.85;
+
+		human_leg_target_pub.publish(marker_leg_target);
+		
+	
+
+
 	//publish command
 
 	
 
 }
+void Human_Belief::global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+	global_pose[0]=msg->pose.position.x;
+	global_pose[1]=msg->pose.position.y;
+
+
+   tf::StampedTransform baselinktransform;
+   listener.waitForTransform("map", "base_link", ros::Time(0), ros::Duration(10.0));
+   listener.lookupTransform("map", "base_link", ros::Time(0), baselinktransform);
+   double yaw_tf =   tf::getYaw(baselinktransform.getRotation()); 
+
+	global_pose[2]=yaw_tf;
+
+}
+
 
 double Human_Belief::getDistance(double _x, double _y)
 {
@@ -275,76 +894,99 @@ double Human_Belief::getDistance(double _x, double _y)
 
 void Human_Belief::update_human_occ_belief()
 {
-
-		// std::map<int, int> map_index_recently_updated;
-		// if (update_type == (int) HUMANS_DETECTED){
-		// 	for(int i = 0; i < index_of_human_occ_cells_updated_recently.size(); i++){
-		// 		int index = index_of_human_occ_cells_updated_recently[i];
-		// 		map_index_recently_updated[index] = index;
-		// 	}
-		// }
-
-
-
-		// std::vector<int> indices_to_assign_as_free;
-
-		// typedef std::map<int, int>::iterator it_type;
-		// for(it_type iterator = camera_visible_world_indices.begin(); iterator !=  camera_visible_world_indices.end(); iterator++) {
-		// 	int cell_index = iterator->first;
-		// 	if (map_index_recently_updated.count(cell_index) == 1){
-		// 		continue;
-		// 	}
-		// 	if (data[cell_index].cell_type == HUMAN_OCCUPIED){
-		// 		// Update probability			
-		// 		float prior = map_index_of_human_cells_to_prob[cell_index]; // P(H)
-		// 		float P_S = P_Sc_given_H*(prior) + P_Sc_given_Hc*(1-prior);
-		// 		float posterior = prior*0.4;
-		// 		map_index_of_human_cells_to_prob[cell_index] = posterior;
-
-		// 		//std::cout << "Prob: " << posterior << std::endl;
-
-		// 		if (posterior < PROB_THRESH){
-		// 			indices_to_assign_as_free.push_back(cell_index);
-		// 		}
-
-		// 	}
-
-		// }
-
-		// // For each low prob cell, delete it and update the cell type
-
-		// for(size_t i = 0; i < indices_to_assign_as_free.size(); i++){
-		// 	int index_to_erase =  indices_to_assign_as_free[i];
-		// 	map_index_of_human_cells_to_prob.erase(index_to_erase);
-		// 	data[index_to_erase].cell_type = FREE_CELL; 
-		// }
-
-
+	float prior=0.0;
+	float posterior=0.0;
 	//Update human belief with cells in camera visible region
 	for(int i(0);i< visiblie_idx_set.size();i++)
 	{
-		int belief_map_index=visiblie_idx_set[i];
-		if( human_belief_map.data[belief_map_index]>0)	//If we detected human
+	
+		if(Cur_detected_human.size()==0)
 		{
-			float prior =(float) human_belief_map.data[belief_map_index]/100.0; // P(H)
-			// float P_S = P_Sc_given_H*(prior) + P_Sc_given_Hc*(1-prior);
-			float posterior = prior*0.8;
-			human_belief_map.data[belief_map_index] = posterior*100.0;
+			// for(int j(0);j<human_belief_map.data.size();j++)
+				human_belief_map.data[visiblie_idx_set[i]]=0.0;
+		}
+		else{
+
+			int belief_map_index=visiblie_idx_set[i];
+			
+			if( human_belief_map.data[belief_map_index]>0)	//If we detected human
+			{
+				prior =(float) human_belief_map.data[belief_map_index]/100.0; // P(H)
+				// float P_S = P_Sc_given_H*(prior) + P_Sc_given_Hc*(1-prior);
+				posterior = prior*0.95;
+				human_belief_map.data[belief_map_index] = posterior*100.0;
+			}
+			else
+			{
+				human_belief_map.data[belief_map_index]=0.0;
+
+			}
+
 		}
 
 	}
-
 
 	int mapsize=human_belief_map.info.height*human_belief_map.info.width;
 	for(int i(0);i<mapsize;i++)
 		{
 			if(NotUpdatedCameraregion(i))
 			{
-					human_belief_map.data[i]=human_belief_map.data[i];
-			}
+				prior =(float) human_belief_map.data[i]*100.0; // P(H)
+				// float P_S = P_Sc_given_H*(prior) + P_Sc_given_Hc*(1-prior);
+				posterior = prior*0.95;
+				human_belief_map.data[i] = posterior/100.0;
+
+/*				human_belief_map.data[i]=human_belief_map.data[i];
+*/			}
 		}
 
+	//filter for low belief
+    for(int i(0);i<mapsize;i++)
+	{
+		if(human_belief_map.data[i]<15)
+		{
+			human_belief_map.data[i]=0.0;
+		}
+	}
+
+	int human_index=0;
+	Cur_existed_human.clear();
+	for(int i(0);i<mapsize;i++)
+		{
+			if(human_belief_map.data[i]>60)
+			{
+				std::vector<double> map_coord;
+				CellNum2globalCoord(i, map_coord);
+					
+				Cur_existed_human.push_back(map_coord);
+				
+				double global_x_human = map_coord[0];
+				double global_y_human = map_coord[1];
+				
+				// ROS_INFO("Human existance in here : id map index %d,  %d x %.3lf , y : %.3fl ",i,human_index, global_x_human, global_y_human);
+
+				human_index++;
+			}
+
+		}	
+
+	setNearestHuman();
+
 }
+
+
+void Human_Belief::CellNum2globalCoord(const int Cell_idx, std::vector<double>& cell_xy)
+{
+	  cell_xy.resize(2,0.0);
+
+	  int res =(int) Cell_idx / human_belief_map.info.width;
+	  int div =(int) Cell_idx % human_belief_map.info.width;
+
+
+	  cell_xy[0]=human_belief_map.info.resolution*div+0.5*human_belief_map.info.resolution+human_belief_map.info.origin.position.x;
+	  cell_xy[1]=human_belief_map.info.resolution*res+0.5*human_belief_map.info.resolution+human_belief_map.info.origin.position.y;
+}
+
 
 bool Human_Belief::NotUpdatedCameraregion(int idx)
 {
@@ -360,9 +1002,22 @@ bool Human_Belief::NotUpdatedCameraregion(int idx)
 
 void Human_Belief::Init_parameters()
 {
-	Human_target_Pos.resize(2,0.0);
+	global_pose.resize(3,0.0);
+	Human_target_candidate.resize(2,0.0);
+	viewpoint_robot.resize(2,0.0);
+	viewpoint_robot[0]=2.0;
+
+	Head_Pos.resize(2,0.0);
+	leg_target.resize(2,0.0);
+
+	Track_human_target.resize(2,0.0);
 	Robot_Pos.resize(3,0.0);   //x,y,theta
 	m_receiveiter=0;
+	m_updateiter=0;
+	m_viewupdateiter=0;
+	m_leg_updateiter=0;
+	m_yolo_recieveiter=0;
+	targetup=0;
 
 	static_belief_map.info.width=30;
 	static_belief_map.info.height= 30;
@@ -387,7 +1042,21 @@ void Human_Belief::Init_parameters()
 	for(int k(0);k<belief_map_size;k++)
 		human_belief_map.data[k]=0.01;
 
+	pub_iters=0;
+	Camera_angle=0.0;
+	print_iter=0;
+
 }
+
+void Human_Belief::joint_states_callback(const sensor_msgs::JointState::ConstPtr& msg)
+{
+
+	Head_Pos[0]=msg->position[9];			//pan
+	Head_Pos[1]=msg->position[10];			//tilt
+
+
+}
+
 
 void Human_Belief::InitializeBelief()
 {
@@ -401,6 +1070,17 @@ void Human_Belief::setHumanOccupancy(int idx, double dyn_posx,double dyn_posy)
 
 }
 
+void Human_Belief::Check_beliefmap()
+{
+	//
+
+
+
+
+
+
+}
+
 void Human_Belief::Publish_beliefmap()
 {
 	// static_belief_map.info.width=30;
@@ -410,10 +1090,9 @@ void Human_Belief::Publish_beliefmap()
 	// static_belief_map.info.origin.position.y=-5;
 	// static_belief_map.data.resize(static_belief_map.info.width*static_belief_map.info.height);
 
-
 	getCameraregion();
-	put_human_occ_map();
-	update_human_occ_belief();
+	// put_human_occ_map();
+	//update_human_occ_belief();
 
 	 static_belief_map.header.stamp =  ros::Time::now();
 	 static_belief_map.header.frame_id = "map"; 
@@ -431,9 +1110,44 @@ void Human_Belief::Publish_beliefmap()
 void Human_Belief::base_pose_callback(const nav_msgs::Odometry::ConstPtr& msg)
 {
 	//Recieve robot pos - x,y theta
-   Robot_Pos[0]= msg->pose.pose.position.x;
-   Robot_Pos[1]= msg->pose.pose.position.y;
-   Robot_Pos[2]= asin(msg->pose.pose.orientation.z)*2;// - origin_y;	//this is not exact=>sensor_imu
+   Robot_Pos[0]= global_pose[0];
+   Robot_Pos[1]= global_pose[1];
+   Robot_Pos[2]= global_pose[2];// - origin_y;	//this is not exact=>sensor_imu
+   // Robot_Pos[2]+=global_pose[2];
+
+
+   // tf::StampedTransform baselinktransform;
+   // listener.waitForTransform("map", "base_link", ros::Time(0), ros::Duration(10.0));
+   // listener.lookupTransform("map", "base_link", ros::Time(0), baselinktransform);
+   // double yaw_tf =   tf::getYaw(baselinktransform.getRotation()); 
+
+
+   tf::StampedTransform Camera_transform;
+   listener.waitForTransform("map", "head_rgbd_sensor_rgb_frame", ros::Time(0), ros::Duration(10.0));
+   listener.lookupTransform("map", "head_rgbd_sensor_rgb_frame", ros::Time(0), Camera_transform);
+   double yaw_angle_camera =   tf::getYaw(Camera_transform.getRotation()); 
+
+   Camera_angle=yaw_angle_camera;
+
+
+   // if(print_iter>200)
+   // {
+   // 	 // std::cout << "base link yaw : "<<Robot_Pos[2]<<", camera :"<<Camera_angle<<std:: endl;
+   // 	print_iter=0;
+   // }
+
+   // print_iter++;
+
+  // tf::Pose tfpose;
+  // tf::poseMsgToTF(msg->pose.pose, tfpose);
+  // double yaw_angle = tf::getYaw(tfpose.getRotation());	//2sin()
+  // ROS_INFO("odom yaw : %.3lf \n",yaw_angle);
+  // ROS_INFO("robot_pos yaw(me) : %.3lf",Robot_Pos[2]);
+
+  // // ROS_INFO("------------------------------------");
+  // ROS_INFO("global_pos yaw : %.3lf",global_pose[2]);
+  // ROS_INFO("robot_pos yaw_tf : %.3lf",yaw_tf);
+
 }
 
 
@@ -442,11 +1156,14 @@ void Human_Belief::getCameraregion()
 
 	double global_robot_x= Robot_Pos[0];
 	double global_robot_y= Robot_Pos[1];
-	double global_robot_theta = Robot_Pos[2];
-	//std::cout<<global_robot_theta<<std::endl;
+	double global_robot_theta = Robot_Pos[2]+Head_Pos[0];
 
-	double m_1=tan(29*3.141592/180);
-	double m_2=tan(29*3.141592/180);
+
+	// std::cout<<"theta:"<<Robot_Pos[2]<<",head :"<<Head_Pos[0]<<", total :"<<global_robot_theta<<std::endl;
+
+
+	double m_1=tan(30*3.141592/180);
+	double m_2=tan(30*3.141592/180);
 
 	visiblie_idx_set.clear();
 
@@ -470,12 +1187,13 @@ void Human_Belief::getCameraregion()
 		double belief_global_y=map_ogirin_y+rot_trans_vector_y;
 
 
-		// if(getlinevalue(1,belief_global_x,belief_global_y) && !(getlinevalue(2,belief_global_x,belief_global_y)))
+		//solve
+		bool line1_result =getlinevalue(1,belief_global_x,belief_global_y);
+		bool line2_result =getlinevalue(2,belief_global_x,belief_global_y);
 
 
-	
-		// if(getlinevalue(1,belief_global_x,belief_global_y)
-		if(getlinevalue(1,belief_global_x,belief_global_y) && (getlinevalue(2,belief_global_x,belief_global_y)))
+
+		if( line1_result && line2_result )
 		{
 			static_belief_map.data[belief_map_idx]=30;	
 			visiblie_idx_set.push_back(belief_map_idx);					//save cell_id 
@@ -491,47 +1209,49 @@ void Human_Belief::getCameraregion()
 bool Human_Belief::getlinevalue(int line_type,double input_x, double input_y)
 {
 
-	double global_robot_theta = Robot_Pos[2];
+	double global_robot_theta = Robot_Pos[2]+Head_Pos[0];;
 	double theta_1=-FOVW*MATH_PI/180+global_robot_theta;
 	double theta_2= FOVW*MATH_PI/180+global_robot_theta;
 	
-
 	double m_1=tan(theta_1);
 	double m_2=tan(theta_2);
 
-	// std::cout<<"theta_1 :"<<theta_1*180/(MATH_PI)<<std::endl;
-	// std::cout<<"theta_2 :"<<theta_2*180/(MATH_PI)<<std::endl;
+	 // std::cout<<"theta_1 :"<<theta_1*180/(MATH_PI)<<std::endl;
+	 // std::cout<<"theta_2 :"<<theta_2*180/(MATH_PI)<<std::endl;
+
+	 // std::cout<<"m_1 :"<<m_1<<std::endl;
+	 // std::cout<<"m_2 :"<<m_2<<std::endl;
 
 	int isspecial=0;
 
-	if(theta_1<-MATH_PI/2.0)
+	if(theta_1<-MATH_PI/2.0 && theta_2 >-MATH_PI/2.0)
 	{
 		double temp=m_2;
-		m_2=m_1;
-		m_1=temp;
+		// m_2=m_1;
+		// m_1=temp;
 		isspecial=1;
 	}
 	else if(theta_2> MATH_PI/2.0 && (theta_1 <MATH_PI/2.0))
 	{
 		isspecial=2;
-
 	}
-	
-	if(theta_2< -MATH_PI/2.0)
+	else if (theta_1<-MATH_PI/2.0 && theta_2 <-MATH_PI/2.0)
+	{
+		isspecial=5;
+	}
+	else if(theta_2< -MATH_PI/2.0)
 	{
 		isspecial=3;
 	}
 
-	if(theta_1>MATH_PI/2.0 && theta_2> MATH_PI/2.0)
+	else if(theta_1>MATH_PI/2.0 && theta_2> MATH_PI/2.0)
 	{
-		double temp=m_2;
-		m_2=m_1;
-		m_1=temp;
 		isspecial=4;	
 	}
-	
-	// double m_2=+tan(29*3.141592/180+3.141592/2+global_robot_theta);	
 
+
+	 // std::cout<<"camera region section : "<<isspecial<<std::endl;
+	
 	double m=0.0;
 	double coeff_sign=1.0;
 
@@ -543,17 +1263,36 @@ bool Human_Belief::getlinevalue(int line_type,double input_x, double input_y)
 	switch(line_type){
 	case 1:
 			m=m_1;
-			coeff_sign=1.0;
+			coeff_sign=-1.0;
 
-			if(isspecial==1)
-				coeff_sign=-1.0;				
+			if(isspecial==0)
+					coeff_sign=-1.0;
+			else if(isspecial==1)
+				coeff_sign=1.0;
+			else if(isspecial==2)
+				coeff_sign=-1.0;	
+			else if(isspecial==4)
+				coeff_sign=1.0;	
+			else if(isspecial==5)
+				coeff_sign=1.0;	
+
 			break;
 	case 2:
 			m=m_2;
 			coeff_sign=-1.0;
+			if(isspecial==1)
+				coeff_sign=1.0;	
+			else if(isspecial==0)
+			 	coeff_sign=1.0;	
+			else if(isspecial==3)
+				coeff_sign=1.0;
+			// else if(isspecial==5)
+			// 	coeff_sign=1.0;		
+			// if(isspecial==4)
+			// 	coeff_sign=1.0;
 
-			if(isspecial==2 )
-				coeff_sign=1.0;				
+			// if(isspecial==2 )
+			// 	coeff_sign=1.0;				
 						
 
 			break;
@@ -564,10 +1303,46 @@ bool Human_Belief::getlinevalue(int line_type,double input_x, double input_y)
 
 	res= m*input_x-m*global_robot_x+global_robot_y-input_y;
 
-	if(res*coeff_sign<0 || res==0)
+	if(res*coeff_sign>0 || res==0)
 		return true;
 	else
  		return false;
+
+}
+
+
+
+void Human_Belief::Publish_nav_target()
+{
+
+	if(pub_iters>100){
+
+	move_base_msgs::MoveBaseActionGoal Navmsgs;
+	 Navmsgs.header.stamp =  ros::Time::now();
+	 //Navmsgs.header.frame_id = "map"; 
+	 Navmsgs.goal.target_pose.header.frame_id = "map";
+
+	 Navmsgs.goal.target_pose.pose.position.x=leg_target[0]-0.5;
+	 Navmsgs.goal.target_pose.pose.position.y=leg_target[1];
+	 Navmsgs.goal.target_pose.pose.position.z=0.0;
+
+	 Navmsgs.goal.target_pose.pose.orientation.x=0.0;
+	 Navmsgs.goal.target_pose.pose.orientation.y=0.0;
+	 Navmsgs.goal.target_pose.pose.orientation.z=0.0;
+	 Navmsgs.goal.target_pose.pose.orientation.w=1.0;
+
+
+	 setNavTarget_pub.publish(Navmsgs);
+
+
+		pub_iters=0;
+	}
+
+
+
+	pub_iters++;
+
+
 
 }
 

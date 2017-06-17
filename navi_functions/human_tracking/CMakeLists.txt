@@ -13,9 +13,12 @@ find_package(catkin REQUIRED COMPONENTS
   message_generation
   std_msgs
   tf
+  pcl_ros
+  pcl_conversions
 )
 
 find_package(Eigen3 REQUIRED)
+find_package(PCL 1.7 REQUIRED)
 include_directories(${EIGEN3_INCLUDE_DIR})
 include_directories(include)
 include_directories(src)
@@ -35,9 +38,10 @@ catkin_package(
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
+  ${PCL_INCLUDE_DIRS}
 )
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 add_executable(human_tracker src/tracking_test.cpp ${SOURCES})
-target_link_libraries(human_tracker ${catkin_LIBRARIES})
+target_link_libraries(human_tracker ${catkin_LIBRARIES} ${PCL_LIBRARIES})

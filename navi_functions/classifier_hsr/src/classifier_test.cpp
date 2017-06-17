@@ -36,7 +36,7 @@ char sz[18];
 
 void CmdStrCallback(const std_msgs::String::ConstPtr& msg);
 void CmdIntCallback(const std_msgs::Int8::ConstPtr& msg);
-void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg);
+// void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg);
 void NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
 {
   int width = msg->width;

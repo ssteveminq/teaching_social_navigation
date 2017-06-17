@@ -151,11 +151,13 @@ public:
 	ros::Subscriber dynamic_obs_sub;
 	ros::Subscriber gridcell_sub;
 	ros::Subscriber sensor_sub;
+	ros::Subscriber human_belief_sub;
 
 	ros::Subscriber human_bounding_boxes_sub;	
 	ros::Subscriber detected_humans_number_sub;
 	ros::Publisher  human_cells_pub;
 	std::vector<CellFeature> robot_envFeatures;
+	std::vector< std::vector<double> > Cur_existed_human;
 
 
     // Grid Variables
@@ -178,7 +180,7 @@ public:
 	float robot_world_y_pos;
 	float robot_world_theta_pos;	
 
-
+	int num_of_human_belief;
 	bool detected_human;
 
 
@@ -241,6 +243,7 @@ public:
 	nav_msgs::OccupancyGrid dynamic_map_grid;
 	nav_msgs::OccupancyGrid proj_map_grid; // The original map
 	nav_msgs::OccupancyGrid feature_map_grid;
+	nav_msgs::OccupancyGrid human_belief_map_grid;
 
 	std::vector<int> state_feature;
 
@@ -255,6 +258,7 @@ public:
 	void dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 	void static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg);
 	void sensor_callback(const sensor_msgs::Imu::ConstPtr& msg);
+	void human_belief_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 
     void joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg);
     void human_detection_callback(const visualization_msgs::MarkerArray::ConstPtr &msg);    
@@ -274,6 +278,7 @@ public:
     void calculate_robotEnvFeatures();
 	void visualize_robotEnvFeatures();
 	void change_marker_prop(int occupancy_type, visualization_msgs::Marker &marker);
+
 
     void publish();
     void humanpublish();

@@ -832,8 +832,6 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		// dynamic_map_grid.info.origin.position.x=-4.5;
 		// dynamic_map_grid.info.origin.position.y=-4.5;
 		// dynamic_map_grid.data.resize(140*140);
-
-
     	int datasize=9;
 
 		dynamic_map_grid.info.width=msg->info.width;
@@ -963,9 +961,6 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 				 		occupancyCountMap[feature_map_idx]=numcount;
 
 				 	mapidx++;
-
-
-
 		 }
 
 
@@ -1098,19 +1093,26 @@ void GridMap::static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg)
 bool GridMap::checkpointHuman(float x_pos,float y_pos)
 {
 	//let's make bounding box for human and check the global point for human
-	bool booldetectedhuman=1;					//this variable should be come from the detected box topic
-	float detected_human_x=1;
-	float detected_human_y=1;
-	float boundingbox_length_x=0.4;
-	float boundingbox_length_y=0.4;
-
+	// bool booldetectedhuman=1;					//this variable should be come from the detected box topic
+	// float detected_human_x=1;
+	// float detected_human_y=1;
+	 float boundingbox_length_x=0.6;
+	 float boundingbox_length_y=0.6;
 
 	//detected bounding box
-	if(booldetectedhuman)
+	if(detected_human)
 	{
-		if((x_pos>detected_human_x-0.5*boundingbox_length_x) && (x_pos<detected_human_x+0.5*boundingbox_length_x))
-			if((y_pos>detected_human_y-0.5*boundingbox_length_y) && (y_pos<detected_human_y+0.5*boundingbox_length_y))
-				return true;
+		for(int i(0);i< Cur_existed_human.size();i++)
+		{
+			 float detected_human_x=Cur_existed_human[i][0];
+			 float detected_human_y=Cur_existed_human[i][1];
+
+			if((x_pos>detected_human_x-0.5*boundingbox_length_x) && (x_pos<detected_human_x+0.5*boundingbox_length_x))
+				if((y_pos>detected_human_y-0.5*boundingbox_length_y) && (y_pos<detected_human_y+0.5*boundingbox_length_y))
+					return true;
+
+
+		}
 	}
 
 
@@ -1175,7 +1177,8 @@ void GridMap::joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg){
 }
 
 void GridMap::human_detection_callback(const visualization_msgs::MarkerArray::ConstPtr &msg){
-	detected_human = true;
+	
+	// detected_human = true;
 	// try{
 	//   camera_to_world_listener.lookupTransform("/base_link", "/head_rgbd_sensor_rgb_frame", ros::Time(0), human_detection_callback);
  //    }
@@ -1620,7 +1623,42 @@ std::map<int, int> GridMap::bounding_box_to_world_indices(float x_center, float 
 }
 
 
+void GridMap::human_belief_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
+{
+		human_belief_map_grid.info.width=msg->info.width;
+		human_belief_map_grid.info.height= msg->info.height;
+		human_belief_map_grid.info.resolution=msg->info.resolution;
+		human_belief_map_grid.info.origin.position.x=msg->info.origin.position.x;
+		human_belief_map_grid.info.origin.position.y=msg->info.origin.position.y;
 
+		double belief_map_size=(msg->info.width)*(msg->info.height);
+		human_belief_map_grid.data.resize(belief_map_size);
+
+		num_of_human_belief=0;
+		Cur_existed_human.clear();
+
+		for(int i(0);i<belief_map_size;i++)
+		{			
+			human_belief_map_grid.data[i]=msg->data[i];
+			if(human_belief_map_grid.data[i]>0)
+				{
+					std::vector<double> belief_map_coord;
+					belief_map_coord.resize(2,0.0);
+
+			  		int res =(int) i / human_belief_map_grid.info.width;
+			  		int div =(int) i % human_belief_map_grid.info.width;
+
+			  		belief_map_coord[0]=div+0.5*human_belief_map_grid.info.resolution+human_belief_map_grid.info.origin.position.x;
+			  		belief_map_coord[1]=res+0.5*human_belief_map_grid.info.resolution+human_belief_map_grid.info.origin.position.y;
+			
+					Cur_existed_human.push_back(belief_map_coord);
+					num_of_human_belief++;
+				}
+		}
+
+		if(num_of_human_belief>0)
+			detected_human=true;
+}
 
 int GridMap::ij_index_to_true_index(int index_i, int index_j){
 	int true_index = index_j*(num_of_cells_width) + index_i;//index_i*(NUM_CELL_HEIGHT) + index_j;
@@ -1758,7 +1796,9 @@ int main(int argc, char **argv)
   gridmap.CBA_grid_pub = gridmap.node.advertise<cba_msgs::CBA_NavInfo>("/CBA_featureV", 0); 
   gridmap.renew_dyn_grid_pub=gridmap.node.advertise<nav_msgs::OccupancyGrid>("grid/renew_dyn_map_cells", 1);
   
-  gridmap.human_marker_pub=gridmap.node.advertise<visualization_msgs::Marker>( "/human_3D", 0 );
+   // gridmap.human_marker_pub=gridmap.node.advertise<visualization_msgs::Marker>("/human_3D", 0 );
+
+ 
   //gridmap.human_markerarray_pub=gridmap.node.advertise<visualization_msgs::MarkerArray>( "/humans_boxes_3D", 0 );
 
 
@@ -1777,7 +1817,7 @@ int main(int argc, char **argv)
   gridmap.static_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/static_obstacle_map_ref", 10, boost::bind(&GridMap::static_obs_ref_callback, &gridmap, _1));
   gridmap.dynamic_obs_sub = gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/dynamic_obstacle_map_ref", 10, boost::bind(&GridMap::dynamic_obs_ref_callback, &gridmap, _1));
   gridmap.gridcell_sub=gridmap.node.subscribe<nav_msgs::GridCells>("/base_path_planner/inflated_static_obstacle_map", 10, boost::bind(&GridMap::static_gridcell_callback, &gridmap, _1));
-
+  gridmap.human_belief_sub=gridmap.node.subscribe<nav_msgs::OccupancyGrid>("/human_belief_map",  10, boost::bind(&GridMap::human_belief_callback, &gridmap, _1));
 
 
 
