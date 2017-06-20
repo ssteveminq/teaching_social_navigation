@@ -10,6 +10,8 @@
 #include <boost/foreach.hpp>
 #define foreach BOOST_FOREACH
 
+#include "geometry_msgs/PointStamped.h"
+#include "geometry_msgs/PoseStamped.h"
 #include "nav_msgs/OccupancyGrid.h"
 #include "nav_msgs/MapMetaData.h"
 #include "nav_msgs/GridCells.h"
@@ -146,7 +148,7 @@ public:
 
 	ros::Publisher feature_map_pub;
 
-	ros::Subscriber trikey_state_sub;
+	ros::Subscriber global_state_sub;
 	ros::Subscriber static_obs_sub;
 	ros::Subscriber dynamic_obs_sub;
 	ros::Subscriber gridcell_sub;
@@ -207,7 +209,6 @@ public:
 	tf::TransformBroadcaster 		world_to_map_br;
   	tf::Transform 					world_to_map_transform;	
 
-
 	tf::TransformListener 			camera_to_world_listener;
 	tf::StampedTransform 			camera_to_world_transform;
 	tf::StampedTransform 			camera_to_baselink_transform;
@@ -216,6 +217,7 @@ public:
 	tf::TransformListener 			map_to_world_listener;
 	tf::StampedTransform 			map_to_world_transform;
 
+	tf::TransformListener 	  		listener;
 
 
 	visualization_msgs::MarkerArray 	 cell_array;
@@ -246,6 +248,7 @@ public:
 	nav_msgs::OccupancyGrid human_belief_map_grid;
 
 	std::vector<int> state_feature;
+	std::vector<double> global_pose;
 
     // Functions
     visualization_msgs::Marker make_cell_marker(int index, int grid_x_index, int grid_y_index, int cell_color);
@@ -259,6 +262,7 @@ public:
 	void static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg);
 	void sensor_callback(const sensor_msgs::Imu::ConstPtr& msg);
 	void human_belief_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
+	void global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
     void joint_state_callback(const nav_msgs::Odometry::ConstPtr &msg);
     void human_detection_callback(const visualization_msgs::MarkerArray::ConstPtr &msg);    

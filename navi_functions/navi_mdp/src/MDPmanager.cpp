@@ -836,6 +836,10 @@ void MDPManager::global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr
 
 	global_pose[2]=yaw_tf;
 
+   CurVector[0]= global_pose[0];
+   CurVector[1]= global_pose[1];
+   CurVector[2]= global_pose[2];
+
 }
 
 

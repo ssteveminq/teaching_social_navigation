@@ -13,6 +13,7 @@ from control_msgs.msg import JointTrajectoryControllerState
 from std_msgs.msg import String
 from std_msgs.msg import Int8
 from nav_msgs.msg import Odometry
+from geometry_msgs.msg import PoseStamped
 
 BASE_STATE_TOPIC = "/hsrb/omni_base_controller/state"
 

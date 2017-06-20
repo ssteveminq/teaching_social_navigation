@@ -9,7 +9,9 @@ import rospy
 import math
 
 topic = 'human_target'
+topic_array = 'human_boxes'
 publisher = rospy.Publisher(topic, Marker,queue_size=10)
+array_publisher = rospy.Publisher(topic_array, MarkerArray,queue_size=10)
 pub = rospy.Publisher('/Int_cmd_trackhuman', Int8, queue_size=10)
 
 rospy.init_node('register')
@@ -21,6 +23,7 @@ MARKERS_MAX = 100
 
 while not rospy.is_shutdown():
 
+   del markerArray.markers[:]
    marker = Marker()
    marker.header.frame_id = "/map"
    marker.type = marker.SPHERE
@@ -33,12 +36,54 @@ while not rospy.is_shutdown():
    marker.color.g = 1.0
    marker.color.b = 0.0
    marker.pose.orientation.w = 1.0
-   # marker.pose.position.x = 3+count*0.0005+0.25*math.cos(count / 50.0)
-   marker.pose.position.x = 2.2+0.0015*count
-   marker.pose.position.y = -0.3+0.2*math.sin(count/100.0)
+   
+   marker.pose.position.x = -1.0
+   marker.pose.position.y = 0.5
+   marker.pose.position.z = 1
+
+   marker2 = Marker()
+   marker2.header.frame_id = "/map"
+   marker2.type = marker.SPHERE
+   marker2.action = marker.ADD
+   marker2.scale.x = 0.5
+   marker2.scale.y = 0.5
+   marker2.scale.z = 0.5
+   marker2.color.a = 1.0
+   marker2.color.r = 1.0
+   marker2.color.g = 1.0
+   marker2.color.b = 0.0
+   marker2.pose.orientation.w = 1.0
+   
+   marker2.pose.position.x = 1.0
+   marker2.pose.position.y = 0.5
+   marker2.pose.position.z = 1
+
+
+   marker3 = Marker()
+   marker3.header.frame_id = "/map"
+   marker3.type = marker.SPHERE
+   marker3.action = marker.ADD
+   marker3.scale.x = 0.5
+   marker3.scale.y = 0.5
+   marker3.scale.z = 0.5
+   marker3.color.a = 1.0
+   marker3.color.r = 1.0
+   marker3.color.g = 1.0
+   marker3.color.b = 0.0
+   marker3.pose.orientation.w = 1.0
+   
+   marker3.pose.position.x = 2.0
+   marker3.pose.position.y = 1.2
+   marker3.pose.position.z = 1
+        
+   #moving human
+   #marker.pose.position.x = 2.2+0.0015*count
+   #marker.pose.position.y = -0.3+0.2*math.sin(count/100.0)
+   #marker.pose.position.z = 1
+
    # marker.pose.position.y = 2.7+0.2*math.sin(count/100.0)
    # marker.pose.position.y = +0.2*math.sin(count / 40.0) 
-   marker.pose.position.z = 1
+   
    # marker.pose.position.x = 3.0
    # marker.pose.position.y = 0.5
    # marker.pose.position.z = 1
@@ -51,17 +96,19 @@ while not rospy.is_shutdown():
    # if(count > MARKERS_MAX):
    #     markerArray.markers.pop(0)
 
-   # markerArray.markers.append(marker)
-
+   markerArray.markers.append(marker)
+   markerArray.markers.append(marker2)
+   markerArray.markers.append(marker3)
    # Renumber the marker IDs
-   # id = 0
-   # for m in markerArray.markers:
-   #     m.id = id
-   #     id += 1
+   id = 0
+   for m in markerArray.markers:
+       m.id = id
+       id += 1
 
    # Publish the MarkerArray
    # publisher.publish(marker)
-   pub.publish(int_msg)
+   array_publisher.publish(markerArray)
+   # pub.publish(int_msg)
 
    count += 1
 

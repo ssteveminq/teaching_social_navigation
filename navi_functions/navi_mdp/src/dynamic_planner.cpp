@@ -61,12 +61,9 @@ int main(int argc, char **argv)
   dynamicManager.CurVector[0]= Omsg->pose.pose.position.x;
   dynamicManager.CurVector[1]= Omsg->pose.pose.position.y;
 
-
-
   while (ros::ok())
   {
-	   
-     //problemmanager.MDPsolPublish();
+      //problemmanager.MDPsolPublish();
       if(dynamicManager.m_boolSolve)
       {
          ROS_INFO("Start to dynamic mdp");
@@ -80,7 +77,6 @@ int main(int argc, char **argv)
       {
         if(dynamicManager.dyn_path_num>0)
           dynamicManager.publishpaths();
-
       }
 
   	 ros::spinOnce();

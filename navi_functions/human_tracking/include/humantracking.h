@@ -28,9 +28,13 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/Odometry.h>
 #include <move_base_msgs/MoveBaseActionGoal.h>
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <pcl/kdtree/kdtree.h>
+
 
 #define FOVW 29				//field of view width
-#define MATH_PI 3.15159265359
+#define MATH_PI 3.14159265359
 #define P_H 0.2 // Prior prob
 #define P_S_given_H 0.8
 #define P_S_given_Hc 0.5
@@ -39,12 +43,17 @@
 #define P_Sc_given_Hc 0.99
 
 #define Same_POS_diff 0.5
-#define MAX_UPDATE_ITER 25
-#define MAX_VIEW_UPDATE_ITER 50
+#define MAX_UPDATE_ITER 50
+#define MAX_VIEW_UPDATE_ITER 100
+#define LASER_ANGLE_RES 0.25
+#define LASER_Data_Length 914
+#define LASER_Point_Step 16
 
-#define LASER_ANGLE_MAX 2.0980000
-#define LASER_ANGLE_MIN -2.0980000
+
+#define LASER_ANGLE_MIN -2.09875845909
+#define LASER_ANGLE_MAX 2.09875845909
 #define LASER_ANGLE_STEP 0.00436332309619
+
 
 
 class Human_Belief{
@@ -91,21 +100,24 @@ public:
 	std::vector< std::vector< double > > Cur_leg_human;
 	std::vector< std::vector< double > > Cur_leg_yolo_human;
 	std::vector< double >  viewpoint_robot;
+	std::vector<double> angle_people_set;
+	std::vector<double> angle_criticalvalue;
 
 	std::vector<int> human_occupied_idx;
 	std::vector<int> human_occupied_leg_idx;
 	std::vector<int> visiblie_idx_set;
-	std::vector<double> angle_people_set;
 
 	std::vector<int> index_of_human_occ_cells_updated_recently;
 	std::map<int, float> map_index_of_human_cells_to_prob;
 
+	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 	
 	nav_msgs::OccupancyGrid dynamic_belief_map;
 	nav_msgs::OccupancyGrid human_belief_map;
 	nav_msgs::OccupancyGrid static_belief_map;
 	std_msgs::Int8 track_cmd;
 	visualization_msgs::MarkerArray human_boxes_array;
+	bool OnceTargeted;
 
 
 	void Init_parameters();
@@ -143,15 +155,16 @@ public:
 	void SetTarget();
 	bool Comparetwopoistions(std::vector<double> pos,std::vector<double> pos2);
 	bool Comparetwopoistions(std::vector<double> pos,std::vector<double> pos2, double criterion);
-	int ConvertAngle2LaserIdx(double angle_rad);
-
-
 	void CellNum2globalCoord(const int idx, std::vector<double>& map_coords);
 	void Publish_nav_target();
 	void UpdateTarget();
 	void setViewpointTarget(const std::vector<double> pos);
 	
 	bool IsTargetMoved(const std::vector<double> possible_target_pos, float criterion);
+
+	int ConvertAngle2LaserIdx(double angle_rad);
+	int FindNearesetLegIdx();
+	double getDistance_from_Vec(std::vector<double> origin, double _x, double _y);
 
 	std::vector<double> m_dyn_occupancy;
 	std::vector<double> m_prob_occupancy;
