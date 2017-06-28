@@ -18,17 +18,16 @@ using namespace Eigen;
 int num_x=12;
 int num_y=12;
 
+//variables & functions for service
+bool g_caught_sigint=false;
 
-// void local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg)
-// {
-//    //ROS_INFO("int msg");
-//     localoccupancy.resize(msg->data.size());
-
-//    for(int i(0);i<msg->data.size();i++){
-//         localoccupancy[i]=(msg->data)[i];
-//    }
-
-// }
+void sig_handler(int sig)
+{
+  g_caught_sigint = true;
+  ROS_INFO("caught sigint, init shutdown sequence...");
+  ros::shutdown();
+  exit(1);
+};
 
 
 
@@ -37,6 +36,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "Human_tracker");
 
   Human_Belief Human_tracker;
+
 
   
   // MDPManager problemmanager = humantracking(&mapParam);
@@ -67,8 +67,6 @@ int main(int argc, char **argv)
   Human_tracker.human_laser_pub= n.advertise<sensor_msgs::PointCloud2>("/modified_scan_cloud", 50, true);
   Human_tracker.human_laser_scan_pub=n.advertise<sensor_msgs::LaserScan>("/modifiedlaserscan", 50, true);
 
-
-
   dynlocalmap_sub =n.subscribe<nav_msgs::OccupancyGrid>("/scaled_dynamic_map", 30, &Human_Belief::dyn_map_callback,&Human_tracker); 
   Basepos_sub   = n.subscribe<nav_msgs::Odometry>("/hsrb/odom", 10, &Human_Belief::base_pose_callback,&Human_tracker);
   global_pos_sub= n.subscribe<geometry_msgs::PoseStamped>("/global_pose", 10, &Human_Belief::global_pose_callback,&Human_tracker);
@@ -76,8 +74,10 @@ int main(int argc, char **argv)
   jointstates_sub =n.subscribe<sensor_msgs::JointState>("/hsrb/joint_states", 10, &Human_Belief::joint_states_callback,&Human_tracker);
   // laser_pcl_sub =n.subscribe<sensor_msgs::PointCloud2>("/scan_cloud", 10, &Human_Belief::laser_pcl_callback,&Human_tracker);
   // laser_scan_sub=n.subscribe<sensor_msgs::LaserScan>("/hsrb/base_scan", 10, &Human_Belief::laser_scan_callback,&Human_tracker);
+  Human_markerarray_sub = n.subscribe<visualization_msgs::MarkerArray>("/human_boxes", 10, &Human_Belief::Human_MarkerarrayCallback,&Human_tracker);
+  ros::Timer timer = n.createTimer(ros::Duration(5.0), &Human_Belief::scanforhuman, &Human_tracker);
 
-  Human_markerarray_sub = n.subscribe<visualization_msgs::MarkerArray>("/human_boxes", 50, &Human_Belief::Human_MarkerarrayCallback,&Human_tracker);
+  ros::ServiceServer service = n.advertiseService("/human_finder",  &Human_Belief::FindHuman,&Human_tracker);
 
   ros::Rate loop_rate(50);
 
@@ -86,11 +86,23 @@ int main(int argc, char **argv)
   while (ros::ok())
   {
 	   
-     Human_tracker.Publish_beliefmap();
+    if(Human_tracker.scanmode)
+    {
+       // Human_tracker.scanforhuman();
+       // Human_tracker.Publish_beliefmap();
+    }
+    else
+    {
+
+
+    }
+       // Human_tracker.scanforhuman();
+      Human_tracker.Publish_beliefmap();
+     // Human_tracker.Publish_beliefmap();
      // Human_tracker.UpdateTarget();
-     Human_tracker.Publish_human_target();
-     Human_tracker.Publish_human_boxes();
-     Human_tracker.Publish_nav_target();
+     // Human_tracker.Publish_human_target();
+     // Human_tracker.Publish_human_boxes();
+     //Human_tracker.Publish_nav_target();
      ros::spinOnce();
      loop_rate.sleep();  
   }

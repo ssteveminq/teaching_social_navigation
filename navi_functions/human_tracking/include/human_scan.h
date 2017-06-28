@@ -19,6 +19,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include "geometry_msgs/PoseArray.h"
 #include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/LaserScan.h>
@@ -50,6 +51,7 @@
 #define LASER_ANGLE_RES 0.25
 #define LASER_Data_Length 914
 #define LASER_Point_Step 16
+#define LASER_Dist_person 4.0
 
 
 #define LASER_ANGLE_MIN -2.09875845909
@@ -58,19 +60,19 @@
 
 
 
-class Human_Belief{
+class Human_Belief_Scan{
 
 public:
-	Human_Belief();
-	Human_Belief(int numofhuman);
-	~Human_Belief();
+	Human_Belief_Scan();
+	Human_Belief_Scan(int numofhuman);
+	~Human_Belief_Scan();
 
 
 	ros::Publisher static_belief_map_pub;
 	ros::Publisher belief_pub;
 	ros::Publisher human_target_pub;
 	ros::Publisher human_leg_target_pub;
-	ros::Publisher human_target_Intcmd_pub;
+	ros::Publisher head_cmd_pub;
 	ros::Publisher Headscan_pub;
 	ros::Publisher Human_boxes_pub;
 	ros::Publisher Gaze_point_pub;
@@ -78,7 +80,10 @@ public:
 	ros::Publisher setNavTarget_pub;
 	ros::Publisher human_laser_pub;
 	ros::Publisher human_laser_scan_pub;
+	ros::Publisher founded_human_pub;
 	
+	ros::Timer my_timer;
+
 	int index;
 	int m_numofhuman;
 	int m_receiveiter;
@@ -90,6 +95,7 @@ public:
 	int targetup;
 	tf::TransformListener 	  listener;
 
+	std::vector<std::string> Names_set;
 	std::vector<double> Robot_Pos;				//x,y,theta
 	std::vector<double> Head_Pos;				//x,y,theta
 	std::vector<double> Head_vel;				//x,y,theta
@@ -101,6 +107,7 @@ public:
 	std::vector< std::vector< double > > Last_detected_human;
 	std::vector< std::vector< double > > Cur_detected_human;
 	std::vector< std::vector< double > > Cur_existed_human;
+	std::vector< std::vector< double > > Founded_human;
 	std::vector< std::vector< double > > Cur_leg_human;
 	std::vector< std::vector< double > > Cur_leg_yolo_human;
 	std::vector< double >  viewpoint_robot;
@@ -117,18 +124,22 @@ public:
 	pcl::PointCloud<pcl::PointXYZRGB>::Ptr cloud;
 	
 	nav_msgs::OccupancyGrid dynamic_belief_map;
-	nav_msgs::OccupancyGrid human_belief_map;
+	nav_msgs::OccupancyGrid Human_Belief_Scan_map;
 	nav_msgs::OccupancyGrid static_belief_map;
 	std_msgs::Int8 track_cmd;
 	visualization_msgs::MarkerArray human_boxes_array;
+	visualization_msgs::MarkerArray human_leg_boxes_array;
 	bool OnceTargeted;
 
+	int  num_of_detected_human;
+	int  num_of_detected_human_yolo;
 	bool IsHeadMoving;
 	bool IsJointMoving(int joint_idx);
 	void Init_parameters();
 	void InitializeBelief();
 	void setHumanOccupancy(int idx, double dyn_posx,double dyn_posy);
 	void Updatemeasurement();
+	// void number_human_callback(const )
 	void dyn_map_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 	void global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 	void number_detected_callback(const std_msgs::Int8::ConstPtr &msg);
@@ -139,6 +150,7 @@ public:
 	void joint_states_callback(const sensor_msgs::JointState::ConstPtr& msg);
 	void laser_pcl_callback(const sensor_msgs::PointCloud2 ::ConstPtr& msg);
 	void laser_scan_callback(const sensor_msgs::LaserScan::ConstPtr& msg);
+	void face_detected_name_callback(const std_msgs::String::ConstPtr& msg);
 
 	void update_human_occ_belief_scan();
 	void CoordinateTransform_Global2_dynMap(double global_x, double global_y);
@@ -155,6 +167,7 @@ public:
 	void setNearestHuman();
 	void setNearestHuman_leg();
 	double getDistance(double _x, double _y);
+	double getDistance(std::vector<double> pos1,std::vector<double> pos2);
 	void Publish_human_target();
 	void Publish_human_boxes();
 	void publish_headscan();
@@ -170,12 +183,13 @@ public:
 	bool IsTargetMoved(const std::vector<double> possible_target_pos, float criterion);
 	bool FindHuman(human_tracking::peoplefinder::Request &req, human_tracking::peoplefinder::Response &res);
 
+	void facedetect_target(const ros::TimerEvent& event); 
 	void scanforhuman(const ros::TimerEvent& event);
 	int ConvertAngle2LaserIdx(double angle_rad);
 	int FindNearesetLegIdx();
 
 	double getDistance_from_Vec(std::vector<double> origin, double _x, double _y);
-
+	void SetTarget_face_detection();
 
 	std::vector<double> m_dyn_occupancy;
 	std::vector<double> m_prob_occupancy;
@@ -184,10 +198,12 @@ public:
 	std::vector<double> m_human_posx;
 	std::vector<double> m_human_posy;
 	bool scanmode;
+	int action_mode;
 
 	int pub_iters;
 	int detect_iters;
 	double Camera_angle;
 	int print_iter;
+	int cur_scan_idx;
 
 };

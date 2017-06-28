@@ -37,8 +37,12 @@ while not rospy.is_shutdown():
    marker.color.b = 0.0
    marker.pose.orientation.w = 1.0
    
-   marker.pose.position.x = -1.0
-   marker.pose.position.y = 0.5
+   # marker.pose.position.x = 4.5
+   # marker.pose.position.y = 0.95
+   # marker.pose.position.z = 1
+
+   marker.pose.position.x = -1.2
+   marker.pose.position.y = 1.47
    marker.pose.position.z = 1
 
    marker2 = Marker()
@@ -54,8 +58,8 @@ while not rospy.is_shutdown():
    marker2.color.b = 0.0
    marker2.pose.orientation.w = 1.0
    
-   marker2.pose.position.x = 1.0
-   marker2.pose.position.y = 0.5
+   marker2.pose.position.x = 0.0
+   marker2.pose.position.y = 1.4
    marker2.pose.position.z = 1
 
 
@@ -72,8 +76,8 @@ while not rospy.is_shutdown():
    marker3.color.b = 0.0
    marker3.pose.orientation.w = 1.0
    
-   marker3.pose.position.x = 2.0
-   marker3.pose.position.y = 1.2
+   marker3.pose.position.x = -1.5
+   marker3.pose.position.y = 0.75
    marker3.pose.position.z = 1
         
    #moving human
