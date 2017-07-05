@@ -83,6 +83,7 @@ public:
 	ros::Publisher founded_human_pub;
 	
 	ros::Timer my_timer;
+	ros::Timer face_detect_timer;
 
 	int index;
 	int m_numofhuman;
