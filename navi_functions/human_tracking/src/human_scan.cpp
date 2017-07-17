@@ -23,9 +23,7 @@ bool Human_Belief_Scan::FindHuman(human_tracking::peoplefinder::Request &req, hu
 	geometry_msgs::PoseArray people_posearrays;
 	res.People_array=people_posearrays;
 	res.IsHuman=true;
-
 	return res.IsHuman;
-
 }
 
 
@@ -63,10 +61,46 @@ bool Human_Belief_Scan::Comparetwopoistions(std::vector<double> pos,std::vector<
 	
 
 	return false;
+}
 
+void Human_Belief_Scan::keyboard_callback(const keyboard::Key::ConstPtr& msg)
+{
+
+	ROS_INFO("Received Keyboard");
+	std::cout<<msg->code<<std::endl;
+	if(msg->code==116)		//if keyboard input is "t"
+	{
+		set_Current_Human_to_Target();
+		send_activation_filter_cmd();
+	}
+}
+
+void Human_Belief_Scan::send_activation_filter_cmd()
+{
+
+	std_msgs::Int8 activation_msg;
+	activation_msg.data=1;
+
+	filter_act_pub.publish(activation_msg);
+
+	
 
 }
 
+void Human_Belief_Scan::set_Current_Human_to_Target()
+{
+
+	if(Cur_detected_human.size()>0)
+	{
+		Track_human_target[0]=Cur_detected_human[0][0];
+		Track_human_target[1]=Cur_detected_human[0][1];
+		OnceTargeted=true;
+		action_mode=2;
+		ROS_INFO("leg target set: %.3lf, y : %.3lf",Track_human_target[0],Track_human_target[1]);
+	}
+
+
+}
 
 void Human_Belief_Scan::SetTarget_face_detection()
 {
@@ -94,10 +128,8 @@ void Human_Belief_Scan::SetTarget_face_detection()
 
 			// Track_human_target[0]=Cur_leg_human[minDistance_Idx][0];
 			// Track_human_target[1]=Cur_leg_human[minDistance_Idx][1];
-
 			Track_human_target[0]=Cur_detected_human[0][0];
 			Track_human_target[1]=Cur_detected_human[0][1];
-
 
 			OnceTargeted=true;
 			action_mode=2;
@@ -163,7 +195,7 @@ double Human_Belief_Scan::getDistance(std::vector<double> pos1,std::vector<doubl
 
 int Human_Belief_Scan::FindNearesetLegIdx()
 {
-
+		//target should be already set
 		std::vector<double> Distanceset;
 		// Distanceset.resize(Cur_detected_human.size(),0.0);
 		Distanceset.resize(Cur_leg_human.size(),0.0);
@@ -187,8 +219,6 @@ int Human_Belief_Scan::FindNearesetLegIdx()
 
 		}
 
-
-				
 	
 		return minDistance_Idx;
 }
@@ -219,12 +249,12 @@ void Human_Belief_Scan::edge_leg_callback(const geometry_msgs::PoseArray::ConstP
 	int num_leg_detected = msg->poses.size();	
 	// ROS_INFO("edge callback data size : %d",num_leg_detected);
 	// human_occupied_leg_idx.clear();
-	 if(m_leg_updateiter>30)
+	 if(m_leg_updateiter>10)
 	 {
 		std::vector<double> tempVec(2,0.0);
 	
 			human_occupied_leg_idx.clear();
-			Cur_leg_human.clear();
+			 Cur_leg_human.clear();
 			// Cur_leg_human.resize(num_leg_detected);
 			for(int i(0);i<num_leg_detected;i++)
 			{
@@ -246,7 +276,7 @@ void Human_Belief_Scan::edge_leg_callback(const geometry_msgs::PoseArray::ConstP
 			    bool IsNearfromRobot= false;
 			    for(int j(0);j<Cur_leg_human.size();j++)
 			    	{
-			    		if(Comparetwopoistions(tempVec,Cur_leg_human[j],0.75))
+			    		if(Comparetwopoistions(tempVec,Cur_leg_human[j],0.65))
 			    			IsFarEnough=false;
 			    	}
 			   	
@@ -264,27 +294,29 @@ void Human_Belief_Scan::edge_leg_callback(const geometry_msgs::PoseArray::ConstP
 				}
 			}
 
-			m_leg_updateiter=0;
-			// OnceTargeted=true;
-		}
 		
-		if(action_mode==2)	//following mode - tracking laser
+			// OnceTargeted=true;
+
+		if(action_mode==2)	//following mode - tracking laser -target should be already set
 		{
 			int NearestLegIdx=FindNearesetLegIdx();
-			
+				
 			std::vector<double> temp_leg_target(2,0.0);	
 			temp_leg_target[0]=Cur_leg_human[NearestLegIdx][0];
 			temp_leg_target[1]=Cur_leg_human[NearestLegIdx][1];
 
-			if(Comparetwopoistions(temp_leg_target,Track_human_target,0.5))
+			if(Comparetwopoistions(temp_leg_target,Track_human_target,0.75))
 			{
-				// std::cout<<"update target - person is in a range"<<std::endl;
-				Track_human_target[0]=temp_leg_target[0];
-				Track_human_target[1]=temp_leg_target[1];
+					// std::cout<<"update target - person is in a range"<<std::endl;
+					Track_human_target[0]=temp_leg_target[0];
+					Track_human_target[1]=temp_leg_target[1];
 			}
 
 		}
-
+		
+		m_leg_updateiter=0;
+	}
+		
 
 	m_leg_updateiter++;
 }
@@ -575,8 +607,6 @@ int Human_Belief_Scan::CoordinateTransform_Global2_staticMap(double global_x, do
  	//Save to human_ouccupied_index
  	// human_occupied_idx.push_back(static_map_idx);
  	 
-
-
 }
 
 void Human_Belief_Scan::CoordinateTransform_Global2_dynMap(double global_x, double global_y)

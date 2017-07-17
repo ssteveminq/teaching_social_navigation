@@ -23,6 +23,7 @@
 #include <sensor_msgs/JointState.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/LaserScan.h>
+#include <keyboard/Key.h>
 
 #include "visualization_msgs/Marker.h"
 #include "visualization_msgs/MarkerArray.h"
@@ -81,6 +82,7 @@ public:
 	ros::Publisher human_laser_pub;
 	ros::Publisher human_laser_scan_pub;
 	ros::Publisher founded_human_pub;
+	ros::Publisher filter_act_pub;
 	
 	ros::Timer my_timer;
 	ros::Timer face_detect_timer;
@@ -152,6 +154,8 @@ public:
 	void laser_pcl_callback(const sensor_msgs::PointCloud2 ::ConstPtr& msg);
 	void laser_scan_callback(const sensor_msgs::LaserScan::ConstPtr& msg);
 	void face_detected_name_callback(const std_msgs::String::ConstPtr& msg);
+	void keyboard_callback(const keyboard::Key::ConstPtr& msg);
+	void send_activation_filter_cmd();
 
 	void update_human_occ_belief_scan();
 	void CoordinateTransform_Global2_dynMap(double global_x, double global_y);
@@ -191,6 +195,7 @@ public:
 
 	double getDistance_from_Vec(std::vector<double> origin, double _x, double _y);
 	void SetTarget_face_detection();
+	void set_Current_Human_to_Target();
 
 	std::vector<double> m_dyn_occupancy;
 	std::vector<double> m_prob_occupancy;

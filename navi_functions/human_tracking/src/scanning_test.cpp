@@ -49,6 +49,7 @@ int main(int argc, char **argv)
   ros::Subscriber laser_scan_sub;
   ros::Subscriber human_num_sub;
   ros::Subscriber face_detected_sub;
+  ros::Subscriber keyboard_sub;
 
   ros::NodeHandle n;
   Human_tracker.setNavTarget_pub=n.advertise<move_base_msgs::MoveBaseActionGoal>("/move_base/move/goal",50,true);
@@ -61,7 +62,8 @@ int main(int argc, char **argv)
   Human_tracker.human_leg_target_pub=n.advertise<visualization_msgs::Marker>("/human_leg_target", 10, true);
   Human_tracker.Gaze_point_pub= n.advertise<geometry_msgs::Point>("/gazed_point_fixing_node/target_point", 50, true);
   Human_tracker.Gaze_activate_pub= n.advertise<std_msgs::Bool>("/gazed_point_fixing_node/activate", 50, true);
-  
+  Human_tracker.filter_act_pub=n.advertise<std_msgs::Int8>("/filter_act_cmd", 10, true);
+
 
   dynlocalmap_sub =n.subscribe<nav_msgs::OccupancyGrid>("/scaled_dynamic_map", 30, &Human_Belief_Scan::dyn_map_callback,&Human_tracker); 
   global_pos_sub= n.subscribe<geometry_msgs::PoseStamped>("/global_pose", 10, &Human_Belief_Scan::global_pose_callback,&Human_tracker);
@@ -70,7 +72,8 @@ int main(int argc, char **argv)
   Human_markerarray_sub = n.subscribe<visualization_msgs::MarkerArray>("/human_boxes", 10, &Human_Belief_Scan::Human_MarkerarrayCallback,&Human_tracker);
   human_num_sub=n.subscribe<std_msgs::Int8>("detection/number_of_detected_dobjects",10, &Human_Belief_Scan::number_detected_callback,&Human_tracker);
   face_detected_sub=n.subscribe<std_msgs::String>("/face_detected_name",10, &Human_Belief_Scan::face_detected_name_callback,&Human_tracker);
-   
+  keyboard_sub=n.subscribe<keyboard::Key>("/keyboard/keydown",10, &Human_Belief_Scan::keyboard_callback,&Human_tracker);
+
   Human_tracker.my_timer = n.createTimer(ros::Duration(15.0), &Human_Belief_Scan::scanforhuman, &Human_tracker);
   Human_tracker.face_detect_timer = n.createTimer(ros::Duration(7.5), &Human_Belief_Scan::facedetect_target, &Human_tracker);
   ros::ServiceServer service = n.advertiseService("/human_finder",  &Human_Belief_Scan::FindHuman,&Human_tracker);
@@ -83,10 +86,12 @@ int main(int argc, char **argv)
     if(Human_tracker.action_mode==0)
     {
        // Human_tracker.scanforhuman();
+       Human_tracker.Publish_beliefmap();     
      
     }
     else if(Human_tracker.action_mode==1)   //wait for setting target
     {
+       Human_tracker.Publish_beliefmap();     
       //do face detection
       //find nearest person
       // Human_tracker.SetTarget();
@@ -95,7 +100,7 @@ int main(int argc, char **argv)
     else if(Human_tracker.action_mode==2)   //navigation mode
     {
       //If we set the target
-     Human_tracker.Publish_human_target();
+      Human_tracker.Publish_human_target();
       Human_tracker.Publish_nav_target();
 
     }
@@ -105,7 +110,7 @@ int main(int argc, char **argv)
 
     }
     
-    Human_tracker.Publish_beliefmap();     
+     // Human_tracker.Publish_beliefmap();     
      Human_tracker.Publish_human_boxes();
      ros::spinOnce();
      loop_rate.sleep();  

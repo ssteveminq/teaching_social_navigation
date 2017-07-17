@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
   people_msgs
   sensor_msgs
+  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -30,6 +31,7 @@ CATKIN_DEPENDS
     std_msgs
     geometry_msgs
     people_msgs
+    nav_msgs
 LIBRARIES human_filter
 )
 
@@ -56,12 +58,18 @@ add_library(human_filter
 
 ## Declare a cpp executable
 add_executable(kalman_tracker src/people_tracking_node.cpp)
+add_executable(edge_midfilter src/edge_leg_filter_node.cpp)
 
 ## Add cmake target dependencies of the executable/library
 add_dependencies(kalman_tracker people_msgs_gencpp human_filter)
+add_dependencies(edge_midfilter people_msgs_gencpp human_filter)
+
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(kalman_tracker human_filter ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${BFL_LIBRARIES}
+)
+
+target_link_libraries(edge_midfilter human_filter ${catkin_LIBRARIES} ${Boost_LIBRARIES} ${BFL_LIBRARIES}
 )
 
 install(TARGETS ${PROJECT_NAME}
@@ -71,6 +79,12 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 install(TARGETS kalman_tracker
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(TARGETS edge_midfilter
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
