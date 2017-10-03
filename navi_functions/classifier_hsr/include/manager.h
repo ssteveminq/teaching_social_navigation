@@ -10,6 +10,16 @@
 #include "cba_msgs/CBA_NavInfo.h"
 #include "nav_msgs/Odometry.h"
 #include "std_msgs/Int8.h"
+#include "std_msgs/Int32MultiArray.h"
+#include "std_msgs/Float32MultiArray.h"
+#include "geometry_msgs/Pose2D.h"
+#include "geometry_msgs/PoseStamped.h"
+#include "tf/transform_listener.h"
+#include "tf/message_filter.h"
+#include "tf/tf.h"
+#include <tf/transform_datatypes.h>
+
+
 
 
 #define Grid_STEP 10
@@ -94,8 +104,11 @@ public:
 	vector<int>  m_Goal;							//Goal position of (x,y)
 	vector<int>  m_Robot;					    	//Current Robot position of (x,y)
 	vector<float> m_unitGoal;
+	
 
 	vector<float> storedFeaturevector;
+
+	tf::TransformListener 	  listener;
 
 	int 	     Feature_dim;
 	int          X_mapSize;
@@ -177,6 +190,11 @@ public:
 	bool 			boolAuto;
 	bool            Isbad;
 	int             Storedbaddecision;
+	void 			mdpsol_Callback(const std_msgs::Int32MultiArray::ConstPtr& msg);
+	void 			CmdIntCallback(const std_msgs::Int8::ConstPtr& msg);
+	void 			Unitgoal_Callback(const std_msgs::Float32MultiArray::ConstPtr& msg);
+	void 			global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg);
+	void			NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg);
 
 
 

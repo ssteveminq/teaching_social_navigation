@@ -1,4 +1,6 @@
 <launch>
-    <node name="gui_test" pkg="classifier" type="gui_test2.py" respawn="false" output="screen"/>    
-    <node name="classifier_test" pkg="classifier" type="classifier_test" respawn="false" output="screen"/>        
+    <node name="gui_test" pkg="classifier_hsr" type="gui_test2.py" respawn="false" output="screen"/>
+    <node name="omni_velocity_test" pkg="classifier_hsr" type="omni_velocity_gui.py" respawn="false" output="screen"/>     
+    <node name="hsr_classifier_test" pkg="classifier_hsr" type="hsr_classifier_test" respawn="false" output="screen"/>        
+    <node name ="feature_grid_node" pkg="grid_hsr" type="feature_grid" respawn="false" output="screen"/>
 </launch>

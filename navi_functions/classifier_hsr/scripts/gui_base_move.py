@@ -47,7 +47,7 @@ class BaseMoveCBA(object):
         self.traj = trajectory_msgs.msg.JointTrajectory()
         self.traj.joint_names = ["odom_x", "odom_y", "odom_t"]
         self.p = trajectory_msgs.msg.JointTrajectoryPoint()
-        self.p.positions = [1, 0, 0.8]
+        self.p.positions = [0.0, 0, 0.0]
         self.p.velocities = [0, 0, 0]
         self.p.time_from_start = rospy.Time(5)
         self.traj.points = [self.p]

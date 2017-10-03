@@ -51,7 +51,7 @@ int main(int argc, char **argv)
   while (ros::ok())
   {
  
-     //problemmanager.MDPsolPublish();
+     problemmanager.MDPsolPublish();
      if(problemmanager.m_boolSolve)
      {
         printf("Begin to solve\n");
@@ -59,6 +59,7 @@ int main(int argc, char **argv)
         problemmanager.MDPsolve(); 
         //problemmanager.printPath(); 
         problemmanager.generatePath();
+
         
         printf("End solve\n");
         problemmanager.m_boolSolve=false;

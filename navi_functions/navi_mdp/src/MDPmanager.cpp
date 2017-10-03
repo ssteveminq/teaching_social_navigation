@@ -100,7 +100,7 @@ void MapParam::set_Robot_Info(vector<int> _inputRobotInfo)
 }
 
 
-MDPManager::MDPManager(MapParam* _pMapParam):maxiter(Maxiteration),Action_dim(8),gamma(1),Ra(ra),publishnum(0),ReceiveData(0),m_boolSolve(false),dyn_path_num(0)
+MDPManager::MDPManager(MapParam* _pMapParam):maxiter(Maxiteration),Action_dim(8),gamma(1),Ra(ra),publishnum(0),ReceiveData(0),boolpath(false),m_boolSolve(false),dyn_path_num(0)
 {
 	pMapParam=_pMapParam;
 	Init();
@@ -248,13 +248,14 @@ void MDPManager::Init()
 	 Scaled_dynamic_map_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_dynamic_map", 10, true);
 	 Scaled_dynamic_map_path_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/scaled_dynamic_map_path", 10, true);
 	 MDPSol_pub = m_node.advertise<std_msgs::Int32MultiArray>("MDP/Solution", 10);
+	 MDPSolMap_pub=m_node.advertise<nav_msgs::OccupancyGrid>("/MDP/SolutionGrid", 10, true);
 	 RobotHeading_pub= m_node.advertise<geometry_msgs::Pose>("mdp_HeadingV", 10);
 
 	Scaled_static_map_path.info.width=Grid_Num_X;
 	Scaled_static_map_path.info.height= Grid_Num_Y;
 	Scaled_static_map_path.info.resolution=0.5;
-	Scaled_static_map_path.info.origin.position.x=-4;
-	Scaled_static_map_path.info.origin.position.y=-4;
+	Scaled_static_map_path.info.origin.position.x=-2.5;
+	Scaled_static_map_path.info.origin.position.y=-2.5;
 	Scaled_static_map_path.data.resize(Scaled_static_map_path.info.width*Scaled_static_map_path.info.height);
 
 
@@ -577,19 +578,39 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
 	ROS_INFO("clicked goal_uint goal x : %.3lf, y : %.3lf\n",unitgoalvector[0],unitgoalvector[1]);
       // printf("x index is %.3f, y index is %.3f \n",Goal_Coord[0],Goal_Coord[1]);  
     m_boolSolve=true;
-
     return;
 }
 
 void MDPManager::MDPsolPublish()
 {
-	//  std_msgs::Int32MultiArray MDPsolution_msg;
+	if(boolpath){
+	std_msgs::Int32MultiArray MDPsolution_msg;
 	
-	// MDPsolution_msg.data.resize(32*32); 
-	// for(int i(0);i<32*32;i++)
-	// 	MDPsolution_msg.data[i]=0.1*5*i;
-	// MDPSol_pub.publish(MDPsolution_msg);
+	MDPsolution_msg.data.resize(PolicyNum.size()); 
+	for(int i(0);i<PolicyNum.size();i++)
+		MDPsolution_msg.data[i]=PolicyNum[i];
 
+	MDPSol_pub.publish(MDPsolution_msg);
+
+
+	nav_msgs::OccupancyGrid Mdpsol_Grid;
+	Mdpsol_Grid.info.width=Grid_Num_X;
+	Mdpsol_Grid.info.height= Grid_Num_Y;
+	Mdpsol_Grid.info.resolution=0.5;
+	Mdpsol_Grid.info.origin.position.x=-2.5;
+	Mdpsol_Grid.info.origin.position.y=-2.5;
+	Mdpsol_Grid.data.resize(Mdpsol_Grid.info.width*Mdpsol_Grid.info.height);
+	
+	for(int i(0);i<PolicyNum.size();i++)
+		Mdpsol_Grid.data[i]=10*PolicyNum[i];	
+
+	MDPSolMap_pub.publish(Mdpsol_Grid);
+
+
+
+
+
+	}
 
 }
 
@@ -598,18 +619,13 @@ void MDPManager::Basepos_Callback(const geometry_msgs::PointStamped::ConstPtr& m
 
   ROS_INFO("base position msg");
 
-
    // Map_orig_Vector[0]= msg->point.x-3.5;
    // Map_orig_Vector[1]= msg->point.y-3.5;
 
-
    printf("Map origin x index is %.3f, y index is %.3f \n",Map_orig_Vector[0],Map_orig_Vector[1]); 
-
-
    // CurVector[0]= msg->point.x;
    // CurVector[1]= msg->point.y;
-
-   //    printf("Cur base x index is %.3f, y index is %.3f \n",CurVector[0],CurVector[1]); 
+   // printf("Cur base x index is %.3f, y index is %.3f \n",CurVector[0],CurVector[1]); 
 
 }
 
@@ -746,8 +762,8 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	Scaled_static_map.info.width=Grid_Num_X;
 	Scaled_static_map.info.height= Grid_Num_Y;
 	Scaled_static_map.info.resolution=0.5;
-	Scaled_static_map.info.origin.position.x=-4;
-	Scaled_static_map.info.origin.position.y=-4;
+	Scaled_static_map.info.origin.position.x=-2.5;
+	Scaled_static_map.info.origin.position.y=-2.5;
 	Scaled_static_map.data.resize(Scaled_static_map.info.width*Scaled_static_map.info.height);
 
 	// if(msg->data[0]!=NULL)
@@ -761,8 +777,8 @@ void MDPManager::static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg
 	// Scaled_static_map_path.info.width=32;
 	// Scaled_static_map_path.info.height= 32;
 	// Scaled_static_map_path.info.resolution=0.5;
-	// Scaled_static_map_path.info.origin.position.x=-4;
-	// Scaled_static_map_path.info.origin.position.y=-4;
+	// Scaled_static_map_path.info.origin.position.x=-2.5;
+	// Scaled_static_map_path.info.origin.position.y=-2.5;
 	//Scaled_static_map_path.data.resize(32*32);
 
    double base_origin_x =msg->info.origin.position.x;
@@ -1704,6 +1720,8 @@ void MDPManager::generatePath()
 	for(int i(0);i<PolicyNum.size();i++)
 		MDPsolution_msg.data[i]=PolicyNum[i];
 	MDPSol_pub.publish(MDPsolution_msg);
+
+	boolpath =true;
 
 	//Publish path after planning
 	// std_msgs::Int32MultiArray pathmap_msg;

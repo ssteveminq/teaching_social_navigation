@@ -205,6 +205,7 @@ class BaseMoveCBA(object):
 # # wait for the action server to complete the order
 # cli.wait_for_result()
 if __name__ == '__main__':
-    rospy.init_node('test')
-    CBA_GUI_BASE = BaseMoveCBA(float(sys.argv[1]) if len(sys.argv) > 1 else 0.0)
+    rospy.init_node('velocitytest')
+    # CBA_GUI_BASE = BaseMoveCBA(float(sys.argv[1]) if len(sys.argv) > 1 else 0.0)
+    CBA_GUI_BASE = BaseMoveCBA()
     CBA_GUI_BASE.listener()

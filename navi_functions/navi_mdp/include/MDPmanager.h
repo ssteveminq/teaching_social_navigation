@@ -179,6 +179,7 @@ class MDPManager
 	ros::Publisher   UnitGoalVec_pub;
 	ros::Publisher   MDPSol_pub;
 	ros::Publisher   RobotHeading_pub;
+	ros::Publisher   MDPSolMap_pub;
 	
 
 	//Static_mdp
@@ -190,6 +191,7 @@ class MDPManager
 	nav_msgs::OccupancyGrid Scaled_dynamic_map_path;
 
 	bool       booltrackHuman;
+	bool       boolpath;
 	nav_msgs::Path path;
 	nav_msgs::Path Pre_dynamicSplinePath;
 

@@ -867,9 +867,6 @@ void Human_Belief_Scan::setNearestHuman()
 
 		Human_target_candidate[0]=Cur_existed_human[minDistance_Idx][0];
 		Human_target_candidate[1]=Cur_existed_human[minDistance_Idx][1];
-
-
-			
 		track_cmd.data=1;
 		detect_iters=0;
 	}
@@ -903,12 +900,11 @@ bool Human_Belief_Scan::IsTargetMoved(const std::vector<double> possible_target_
 		return true;
 	else
 		return false;
-
 }
+
 
 void Human_Belief_Scan::setViewpointTarget(const std::vector<double> pos)
 {
-
 	geometry_msgs::Point GazePoint_msg;
 
 	if(pos[0]==0.0 && pos[1]==0.0)
@@ -918,43 +914,32 @@ void Human_Belief_Scan::setViewpointTarget(const std::vector<double> pos)
 	}
 	else
 	{
-		 geometry_msgs::Vector3Stamped gV, tV;
+		geometry_msgs::Vector3Stamped gV, tV;
+	    gV.vector.x = leg_target[0];
+	    gV.vector.y = leg_target[1];
+	    gV.vector.z = 1.0;
 
-		    gV.vector.x = leg_target[0];
-		    gV.vector.y = leg_target[1];
-		    gV.vector.z = 1.0;
+	    gV.header.stamp = ros::Time();
+	    gV.header.frame_id = "/map";
+	    listener.transformVector("/base_range_sensor_link", gV, tV);
 
-		    // std::cout<<"x :"<<_x<<"_y:"<<_y<<"_z:"<<_z<<std::endl;
-		    
+	    std::vector<double> tempVec(3,0.0);
+	    tempVec[0]=tV.vector.x;
+		tempVec[1]=tV.vector.y;
+		tempVec[2]=tV.vector.z;
 
-		    gV.header.stamp = ros::Time();
-		    gV.header.frame_id = "/map";
-		    listener.transformVector("/base_range_sensor_link", gV, tV);
-
-		    std::vector<double> tempVec(3,0.0);
-		    tempVec[0]=tV.vector.x;
-			tempVec[1]=tV.vector.y;
-			tempVec[2]=tV.vector.z;
-
-
-			GazePoint_msg.x=tempVec[0];
-			GazePoint_msg.y=tempVec[1];
-			GazePoint_msg.z=tempVec[2];
+		GazePoint_msg.x=tempVec[0];
+		GazePoint_msg.y=tempVec[1];
+		GazePoint_msg.z=tempVec[2];
 	
 	}
 
 	GazePoint_msg.z=1.0;
-
 	Gaze_point_pub.publish(GazePoint_msg);
 
 	std_msgs::Bool activateGaze_msg;
 	activateGaze_msg.data=true;
-
 	Gaze_activate_pub.publish(activateGaze_msg);
-
-	
-
-
 }
 
 int Human_Belief_Scan::CoordinateTransform_Global2_beliefMap(double global_x, double global_y)
@@ -978,30 +963,19 @@ int Human_Belief_Scan::CoordinateTransform_Global2_beliefMap(double global_x, do
  	return static_map_idx;
  	//Save to human_ouccupied_index
  	// human_occupied_idx.push_back(static_map_idx);
-
-
 }
-
-
 
 void Human_Belief_Scan::UpdateTarget()
 {
 	if(m_updateiter>MAX_UPDATE_ITER)
 	 {	
 		// ROS_INFO("iter");
-
 		if(targetup==0)
 		{
 			// leg_target[0]=leg_target[0];
 			// leg_target[1]=leg_target[1];
-	
 			targetup++;
 			m_updateiter=0;
-			//setViewpointTarget(leg_target);
-	
-			//setlegtarget
-			// leg_target[0]=Track_human_target[0];
-			// leg_target[1]=Track_human_target[1];
 		}
 
 		 if(!IsTargetMoved(leg_target,2.0))

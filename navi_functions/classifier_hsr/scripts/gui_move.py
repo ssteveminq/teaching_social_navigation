@@ -62,7 +62,7 @@ class SpeechGui(QtGui.QWidget):
 
       # # Create the publisher to publish the commands to
       # self.pub = rospy.Publisher("CBA_cmd_str", String, queue_size=1)
-      self.pub2 = rospy.Publisher("gui_movebase_cmd", Int8, queue_size=1)
+      self.pub2 = rospy.Publisher("nav_cmd_int", Int8, queue_size=1)
       rospy.loginfo("Finished initializing BASE GUI")
 
   # Button handler after its clicked
@@ -71,12 +71,12 @@ class SpeechGui(QtGui.QWidget):
       #print "you're here!"
       # # Publish everytime a command is selected from the combo box
       command = str(clicked_button.objectName())
-      if command =="Turn Left": 
+      if command =="East": 
         num_cmd=1
-      elif command =="Turn Right":
-        num_cmd=3
-      elif command =="Go Forward":
+      elif command =="E-N":
         num_cmd=2
+      elif command =="North":
+        num_cmd=3
       elif command =="Go Backward":
         num_cmd=4
       elif command =="Rotate_CW":

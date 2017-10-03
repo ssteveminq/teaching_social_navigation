@@ -920,7 +920,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 						if(isitHuman)
 						{
 							humancount++;
-							// ROS_INFO("near human");
+                             ROS_INFO("near human");
 						 }
 
 						//ROS_INFO("coord x, coord y, map index : %d\n",dyn_map_idx);

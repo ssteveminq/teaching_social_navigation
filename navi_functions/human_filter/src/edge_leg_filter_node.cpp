@@ -187,6 +187,7 @@ void Edgeleg_manager::edge_leg_callback(const geometry_msgs::PoseArray::ConstPtr
 
 
       // std::cout<<"here 3"<<std::endl;
+    if(OnceTarget){
       if(Cur_leg_human.size()>0)
     {
         int NearestLegIdx=FindNearesetLegIdx();
@@ -227,6 +228,7 @@ void Edgeleg_manager::edge_leg_callback(const geometry_msgs::PoseArray::ConstPtr
 
 
     }
+  }
     // edge_leg_iter=0;
     // }
 

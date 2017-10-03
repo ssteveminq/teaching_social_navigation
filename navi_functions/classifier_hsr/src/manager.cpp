@@ -82,6 +82,7 @@ void MapParam::set_RobotId(int _robotid)
 {
 
 	robot_map_id=_robotid;
+	
 }
 
 
@@ -148,18 +149,7 @@ void CBAManager::Init()
 	robot_theta_yaw=0.0;
 	Storedbaddecision=0;
 
- //    Local_X_start=10;
-	// Local_Y_start=90;
-	// Local_X_end=159;
-	// Local_Y_end=149;
-	// Scale_constant=3;
-
-  //getMDPsolutionFile();
-
-	//Matlab_Pub  = n .advertise<matlab_msg::m_gridInfo>("/CBA2Matlab", 30);
-	//Trikey_Pubn = n2.advertise<matlab_msg::m_gridInfo>("/CBA2Matlab", 30);
-	
-	boolMatlabsendData=false;
+ 	boolMatlabsendData=false;
 	boolAuto=false;
 	Isbad=false;
 }
@@ -189,8 +179,9 @@ CBAManager::~CBAManager()
 
 void CBAManager::IntializeROS_publisher()
 {
-	ros::NodeHandle  m_node; 
-	HSR_Pub =m_node.advertise<std_msgs::Int8>("/CBA_action_cmd", 30);
+	// ros::init(argc, argv, "cba_manager_node");
+	// ros::NodeHandle  m_node; 
+	
 
 }
 
@@ -322,6 +313,8 @@ float yaw_angle_deg=0.0;
 float temp=0.0;
 float temp_deg=0.0;
 float temp_Robot2Goal=0.0;
+
+
 temp=sqrt(m_Goal[0]*m_Goal[0]+m_Goal[1]*m_Goal[1]);
 vector<float> unitgoal(2,0.0);
 
@@ -450,9 +443,6 @@ void CBAManager::updateMaptoVec()
 
     // TrainingDataSet.resize((int)(pClassifier->DataListMap.size()));
 
-
-    //make a dateset if <int, List>... why?
-
     // What is your ultimate data type for data and answer?
 
 
@@ -498,11 +488,152 @@ void CBAManager::updateMaptoVec()
 			}
 			cout<<endl;
 		}
+}
 
+
+void CBAManager::mdpsol_Callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
+{
+
+  //ROS_INFO("MDP solution received");
+  m_MDPsolutionMap.resize(msg->data.size());
+  for(int i(0);i<msg->data.size();i++)
+    {
+      m_MDPsolutionMap[i]=msg->data[i];
+    }
 
 
 }
 
+void CBAManager::CmdIntCallback(const std_msgs::Int8::ConstPtr& msg)
+{
+    //ROS_INFO("int msg");
+    ROS_INFO("Cur cmd :%d ",msg->data);
+
+    int cmdfromGUI=(int)(msg->data);
+   
+    ActionfromGUICmd(cmdfromGUI);
+
+  
+        return;
+}
+
+
+void CBAManager::Unitgoal_Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
+{ 
+
+   m_unitGoal[0]=msg->data[0]- robot_global_x_pos;
+   m_unitGoal[1]=msg->data[1]- robot_global_y_pos;
+
+   // m_Manager.m_Goal[0]=m_Manager.Local_X_start+scaledGoalPos[0]*m_Manager.Scale_constant-1;
+   // m_Manager.m_Goal[1]=m_Manager.Local_Y_start+scaledGoalPos[1]*m_Manager.Scale_constant-1;
+   //ROS_INFO("msg-data x: %.3lf, y: %.3lf\n",msg->data[0],msg->data[1]);
+   //ROS_INFO("unit goal x: %.3lf, y: %.3lf\n",m_Manager.m_unitGoal[0],m_Manager.m_unitGoal[1]);
+   //cout<<"Goal Pose is x: "<<m_Manager.m_Goal[0]<<"y : "<<m_Manager.m_Goal[1]<<endl;
+
+}
+
+
+void CBAManager::global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
+{
+  
+   std::vector<double> global_pose(3,0.0);
+
+   global_pose[0]=msg->pose.position.x;
+   global_pose[1]=msg->pose.position.y;
+
+
+   tf::StampedTransform baselinktransform;
+   listener.waitForTransform("map", "base_link", ros::Time(0), ros::Duration(2.0));
+   listener.lookupTransform("map", "base_link", ros::Time(0), baselinktransform);
+   double yaw_tf =   tf::getYaw(baselinktransform.getRotation()); 
+
+   global_pose[2]=yaw_tf;
+
+
+   robot_global_x_pos=global_pose[0];
+   robot_global_y_pos=global_pose[1];
+   robot_theta_yaw=global_pose[2];
+
+}
+
+
+void CBAManager::NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
+{
+  int width = msg->width;
+  int height = msg->height;
+
+  std::vector<int> cell_occupancy_type(msg->cell_occupancy_type.size(),0);
+  std::vector<int> action_policy_type(msg->action_policy_type.size(),0);
+  std::vector<int> robot_local_cell_indices(msg->robot_local_cell_indices.size(),0);
+  std::vector<int> state_type(msg->state_type.size(),0);
+  std::vector<float> state_Distance(msg->state_distance.size(),0);
+  std::vector<float> NearestHumanVector(2,0.0);
+  std::vector<float> RobotHeadingDirection(2,0.0);
+
+  for(int i = 0; i < msg->cell_occupancy_type.size(); i++)
+    cell_occupancy_type[i]=msg->cell_occupancy_type[i];
+
+  //manager.m_mdpsol 
+  for(int i = 0; i < msg->action_policy_type.size(); i++)
+    action_policy_type[i]=msg->action_policy_type[i];
+
+  for(int i = 0; i < msg->robot_local_cell_indices.size(); i++)
+    robot_local_cell_indices[i]=msg->robot_local_cell_indices[i];
+
+  for(int i = 0; i < msg->state_type.size(); i++)
+    state_type[i]=msg->state_type[i];
+
+  for(int i = 0; i < msg->state_distance.size(); i++)
+    state_Distance[i]=msg->state_distance[i];
+
+   NearestHumanVector[0]=msg->unit_x_to_human;
+   NearestHumanVector[1]=msg->unit_y_to_human;
+
+   RobotHeadingDirection[0]=msg->unit_base_link_x;
+   RobotHeadingDirection[1]=msg->unit_base_link_x;
+
+   int robot_map_id=msg->int_robot_id;
+
+// std::cout<<"NH x:" << NearestHumanVector[0]<< ",  y : "<<NearestHumanVector[1]<<endl;  
+
+// std::cout<<"Heading x:" << RobotHeadingDirection[0]<< ",  y : "<<RobotHeadingDirection[1]<<endl;  
+
+  // std::cout << "I got some message from Kinect" << std::endl;
+  // std::cout << msg->cell_occupancy_type.size() << std::endl;
+  //std::cout << msg->action_policy_type.size() << std::endl;
+
+  //Save to MapParam
+  pMapParam->setWidth(width);
+  pMapParam->setHeight(height);
+  pMapParam->set_Cell_Info(cell_occupancy_type);
+  pMapParam->set_OCC_Info(action_policy_type);
+  pMapParam->set_Robot_Info(robot_local_cell_indices);
+  pMapParam->set_State_Type(state_type);
+  pMapParam->set_State_Distance(state_Distance);
+  pMapParam->set_RobotId(robot_map_id);
+  pMapParam->set_NearestHuman_V(NearestHumanVector);
+  pMapParam->set_RobotHeading_V(RobotHeadingDirection);
+
+//  //printf("I am here\n");
+  
+
+//   int AutoDesiredaction=0.0;
+  
+//   if(m_Manager.boolAuto){
+//       vector<float> FeatureVector = m_Manager.getFeaturevector();             //making feature vector for   
+//      AutoDesiredaction=m_Manager.getDirectionfromCBA(FeatureVector);         //Get command from CBA
+
+//      //confidence output
+//      //delivery command based on the confidence value 
+
+//      printf("Auto Mode\n");
+//      ros::Rate r(0.85);
+    
+   
+//      r.sleep();
+ 
+//   }
+}
 
 
 
@@ -721,7 +852,9 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 			cout<<"predict"<<endl;
 			Desiredaction=getDirectionfromCBA(cur_featureV);
 
+			//SaveCurrentPolicy(cur_featureV, Desiredaction);	
 			ROS_INFO("predicted policy : %d, Confidence :%.3lf \n", Desiredaction, pClassifier->Confidence);
+
 			
 		break;
 		case 11: //Good
@@ -910,7 +1043,22 @@ std::vector<int> CBAManager::CellNum2Coord(const int Cell_idx)
 
 	return cell_xy;
 }
+//void CBAManager::SaveAllPolicy(const std::vector<float> StateVector, int _Policy,int good, int bad)
+//{
+	//AllTrainingDataSet.push_back(StateVector);
+	//AllTrainingDataState.push_back(_Policy);
 
+    //Total TrainingVector
+	 //vector<float>  tempVector(Feature_dim+1);
+	 //for(int i(0);i<Feature_dim;i++)
+		 //tempVector[i]=StateVector[i];
+	 //tempVector[Feature_dim]=_Policy;
+
+	//TotalTrainingDataSet.push_back(tempVector);
+	 
+	 //tempVector.clear();	
+
+//}
 
 void CBAManager::SaveCurrentPolicy(const std::vector<float> StateVector, int _Policy)
 {
@@ -1055,7 +1203,7 @@ int CBAManager::getMDPfromFeature()
 	 	if(m_MDPsolutionMap.size()>0)
 		{
 			res=m_MDPsolutionMap[robotid];
-			//ROS_INFO("mdp sol load id : %d, res : %d", robotid,res);
+			ROS_INFO("mdp sol load id : %d, res : %d", robotid,res);
 		}
 	return res;
 }

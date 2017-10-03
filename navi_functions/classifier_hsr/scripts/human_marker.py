@@ -33,7 +33,7 @@ while not rospy.is_shutdown():
    marker.scale.z = 0.5
    marker.color.a = 1.0
    marker.color.r = 1.0
-   marker.color.g = 1.0
+   marker.color.g = 0.0
    marker.color.b = 0.0
    marker.pose.orientation.w = 1.0
    
@@ -41,8 +41,8 @@ while not rospy.is_shutdown():
    # marker.pose.position.y = 0.95
    # marker.pose.position.z = 1
 
-   marker.pose.position.x = -1.2
-   marker.pose.position.y = 1.47
+   marker.pose.position.x = 2.0
+   marker.pose.position.y = 1.3
    marker.pose.position.z = 1
 
    marker2 = Marker()
@@ -53,32 +53,32 @@ while not rospy.is_shutdown():
    marker2.scale.y = 0.5
    marker2.scale.z = 0.5
    marker2.color.a = 1.0
-   marker2.color.r = 1.0
+   marker2.color.r = 0.0
    marker2.color.g = 1.0
    marker2.color.b = 0.0
    marker2.pose.orientation.w = 1.0
    
-   marker2.pose.position.x = 0.0
-   marker2.pose.position.y = 1.4
+   marker2.pose.position.x = 1.5
+   marker2.pose.position.y = 0.85
    marker2.pose.position.z = 1
 
 
-   marker3 = Marker()
-   marker3.header.frame_id = "/map"
-   marker3.type = marker.SPHERE
-   marker3.action = marker.ADD
-   marker3.scale.x = 0.5
-   marker3.scale.y = 0.5
-   marker3.scale.z = 0.5
-   marker3.color.a = 1.0
-   marker3.color.r = 1.0
-   marker3.color.g = 1.0
-   marker3.color.b = 0.0
-   marker3.pose.orientation.w = 1.0
+   # marker3 = Marker()
+   # marker3.header.frame_id = "/map"
+   # marker3.type = marker.SPHERE
+   # marker3.action = marker.ADD
+   # marker3.scale.x = 0.5
+   # marker3.scale.y = 0.5
+   # marker3.scale.z = 0.5
+   # marker3.color.a = 1.0
+   # marker3.color.r = 0.0
+   # marker3.color.g = 0.0
+   # marker3.color.b = 1.0
+   # marker3.pose.orientation.w = 1.0
    
-   marker3.pose.position.x = -1.5
-   marker3.pose.position.y = 0.75
-   marker3.pose.position.z = 1
+   # marker3.pose.position.x = 0.0
+   # marker3.pose.position.y = 0.0
+   # marker3.pose.position.z = 1
         
    #moving human
    #marker.pose.position.x = 2.2+0.0015*count
@@ -102,7 +102,7 @@ while not rospy.is_shutdown():
 
    markerArray.markers.append(marker)
    markerArray.markers.append(marker2)
-   markerArray.markers.append(marker3)
+   # markerArray.markers.append(marker3)
    # Renumber the marker IDs
    id = 0
    for m in markerArray.markers:
