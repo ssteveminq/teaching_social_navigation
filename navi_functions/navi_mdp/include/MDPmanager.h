@@ -189,6 +189,7 @@ class MDPManager
 
 	nav_msgs::OccupancyGrid Scaled_dynamic_map;
 	nav_msgs::OccupancyGrid Scaled_dynamic_map_path;
+    std_msgs::Int32MultiArray MDPsolution_msg;
 
 	bool       booltrackHuman;
 	bool       boolpath;
@@ -218,9 +219,11 @@ class MDPManager
  	int             FindMaxIdx(vector<double> dataset);
  	char            getPolicychar(int policyidx);
  	void			printPath();
+    void            loadMDPPath();
  	void 			generatePath();
  	void 			generate_dynamicPath();
  	void            pathPublish();
+    void            saveMDPPath();
  	void  			updateMap(vector<int>& localmap_,vector<int>& local_start, vector<int>& local_goal);
  	void 			Local_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
  	void 			static_mapCallback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
