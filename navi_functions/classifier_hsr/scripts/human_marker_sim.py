@@ -41,8 +41,8 @@ while not rospy.is_shutdown():
    # marker.pose.position.y = 0.95
    # marker.pose.position.z = 1
 
-   marker.pose.position.x = 2.0
-   marker.pose.position.y = 0.3
+   marker.pose.position.x = 5.0
+   marker.pose.position.y = 3.3
    marker.pose.position.z = 1
 
    marker2 = Marker()
@@ -58,8 +58,8 @@ while not rospy.is_shutdown():
    marker2.color.b = 0.0
    marker2.pose.orientation.w = 1.0
    
-   marker2.pose.position.x = 2.5
-   marker2.pose.position.y = 1.05
+   marker2.pose.position.x = 6.5
+   marker2.pose.position.y = 2.85
    marker2.pose.position.z = 1
 
 
