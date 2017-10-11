@@ -270,7 +270,12 @@ void MDPManager::Init()
     booltrackHuman=false;
     dyn_path_num=0;
 
-    ROS_INFO("here2");
+    
+    loadMDPPath();
+    loadMDPsol();
+
+    boolpath=false;
+    //ROS_INFO("here2");
 
 }
 
@@ -517,7 +522,7 @@ void MDPManager::Human_MarkerCallback(const visualization_msgs::Marker::ConstPtr
             if(Goal_Coord[0]<0 || Goal_Coord[1]<0)
                 return;
 
-            m_boolSolve=true;
+            //m_boolSolve=true;
         }
 
 
@@ -592,7 +597,6 @@ void MDPManager::MDPsolPublish()
 
         MDPSol_pub.publish(MDPsolution_msg);
 
-
         nav_msgs::OccupancyGrid Mdpsol_Grid;
         Mdpsol_Grid.info.width=Grid_Num_X;
         Mdpsol_Grid.info.height= Grid_Num_Y;
@@ -605,11 +609,17 @@ void MDPManager::MDPsolPublish()
             Mdpsol_Grid.data[i]=10*PolicyNum[i];	
 
         MDPSolMap_pub.publish(Mdpsol_Grid);
-
-
-
-
-
+    }
+    else{
+        int sol_datasize=MDPsolution_msg.data.size();
+        //ROS_INFO("mdp solution data size is %d",sol_datasize);
+        if(sol_datasize>0)
+        { 
+            //for(int i(0);i<MDPsolution_msg.data.size();i++)
+                 //std::cout<<MDPsolution_msg.data[i]<<","<<std::endl;
+            MDPSol_pub.publish(MDPsolution_msg);
+            //ROS_INFO("solution published");
+        }
     }
 
 }
@@ -1341,9 +1351,6 @@ void MDPManager::Mapcoord2DynamicCoord(const vector<int>& _Mapcoord, vector<doub
 
 }
 
-
-
-
 //get action(best) in Matlab
 void MDPManager::getMaxValueAction(int x_pos, int y_pos,map<int,double>& maxmap)
 {
@@ -1385,6 +1392,23 @@ void MDPManager::getMaxValueAction(int x_pos, int y_pos,map<int,double>& maxmap)
 void MDPManager::saveMDPPath()
 {
 
+    ofstream mdpsolfile;
+    mdpsolfile.open("/home/mk/cba_ws/mdp_path_sol.csv");
+
+    for(int i(0);i<Scaled_static_map_path.info.height;i++)
+    {
+        for(int j(0);j<Scaled_static_map_path.info.width;j++) 
+        {
+            mdpsolfile<<MDPsolution_msg.data[i*Scaled_static_map_path.info.width+j]<<"\t";
+
+        } 
+        mdpsolfile<<endl;
+
+    }
+
+    mdpsolfile.close();
+
+
     ofstream mdppathfile;
     mdppathfile.open("/home/mk/cba_ws/mdp_path.csv");
 
@@ -1392,20 +1416,25 @@ void MDPManager::saveMDPPath()
     {
         for(int j(0);j<Scaled_static_map_path.info.width;j++) 
         {
-            mdppathfile<<MDPsolution_msg.data[i*Scaled_static_map_path.info.width+j]<<"\t";
+
+            double double_temp;
+            string string_temp;
+
+            double_temp = static_cast<double> (Scaled_static_map_path.data[i*Scaled_static_map_path.info.width+j]);
+            //string_temp = static_cast<string> (Scaled_static_map_path.data[i*Scaled_static_map_path.info.width+j]);
+
+            std::cout<<"double : "<<double_temp<<",string "<<string_temp.c_str()<<std::endl;
+            mdppathfile<<double_temp<<"\t";
+
 
         } 
         mdppathfile<<endl;
 
     }
-    //if(PolicyNum.size()){
-    //for(int i(0);i<PolicyNum.size();i++)
-    //{
-    //mdppathfile<<PolicyNum[i]<<"\t";
-    //}
-    //} 
 
     mdppathfile.close();
+
+
 
 }
 
@@ -1461,14 +1490,84 @@ void  MDPManager::loadMDPPath()
                 str.erase(str.length(),1) ;
                 b = static_cast<float>(atof(str.c_str())) ;
                 Scaled_static_map_path.data[path_idx]=b;
+
+                //cout<<b<<"\t";
             }
+            //cout<<endl;
             
             iter++;
         }
     }
     mdppathfile.close();
+    Scaled_static_map_path_pub.publish(Scaled_static_map_path);
 
 }
+
+
+
+void  MDPManager::loadMDPsol()
+{
+    char 	spell[150]; 
+    int 	iter=0;
+    float 	b ;
+    char 	toki[1] = {','};
+    char 	tok2=',';
+    char 	*data_seg[40];
+    char 	*strtokens[5];
+    int 	i;
+    int     j;
+    string  str;
+
+    //std::string FileName = "/home/mk/catkin_ws/src/hri_final_project/Classifier/src/MDpsols.csv";
+    //ifstream InputFile(FileName.c_str());
+    ifstream mdpsolfile;
+    mdpsolfile.open("/home/mk/cba_ws/mdp_path_sol.csv");
+
+    int datasize=Scaled_static_map_path.info.width*Scaled_static_map_path.info.height;
+    MDPsolution_msg.data.resize(datasize);
+
+    if(!mdpsolfile.is_open()){
+        cout << "Data load error" << endl;
+        exit(0);
+    }
+    else
+    {
+        iter=0;
+        while(!mdpsolfile.eof()) 
+        {
+            mdpsolfile.getline(spell,100);
+            if(spell[0]=='\0')
+                continue;
+
+            i=0;
+            data_seg[i]=strtok(spell,"\t");
+            while(data_seg[i]!=NULL)
+                data_seg[++i]=strtok(NULL,"\t");        
+
+            for(j=0;j<Scaled_static_map_path.info.width;j++)
+            {
+                int path_idx = iter*Scaled_static_map_path.info.height+j;
+                str=data_seg[j];
+                str.erase(str.length(),1) ;
+                b = static_cast<int>(atof(str.c_str())) ;
+                MDPsolution_msg.data[path_idx]=b;
+
+                //cout<<b<<"\t";
+            }
+            //cout<<endl;
+            
+            iter++;
+        }
+    }
+    mdpsolfile.close();
+
+    ROS_INFO("publish mdpsol from file");
+    MDPSol_pub.publish(MDPsolution_msg);
+
+
+}
+
+
 
 //Function for generating path
 void MDPManager::pathPublish(){

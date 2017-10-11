@@ -499,9 +499,9 @@ void CBAManager::mdpsol_Callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   for(int i(0);i<msg->data.size();i++)
     {
       m_MDPsolutionMap[i]=msg->data[i];
+      std::cout<<m_MDPsolutionMap[i]<<",";
     }
-
-
+  std::cout<<std::endl;
 }
 
 void CBAManager::CmdIntCallback(const std_msgs::Int8::ConstPtr& msg)
@@ -613,12 +613,8 @@ void CBAManager::NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
   pMapParam->set_RobotId(robot_map_id);
   pMapParam->set_NearestHuman_V(NearestHumanVector);
   pMapParam->set_RobotHeading_V(RobotHeadingDirection);
-
 //  //printf("I am here\n");
-  
-
 //   int AutoDesiredaction=0.0;
-  
 //   if(m_Manager.boolAuto){
 //       vector<float> FeatureVector = m_Manager.getFeaturevector();             //making feature vector for   
 //      AutoDesiredaction=m_Manager.getDirectionfromCBA(FeatureVector);         //Get command from CBA
@@ -628,8 +624,6 @@ void CBAManager::NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
 
 //      printf("Auto Mode\n");
 //      ros::Rate r(0.85);
-    
-   
 //      r.sleep();
  
 //   }
@@ -690,10 +684,7 @@ void CBAManager::LoadMDPSolutionFile()
 			}
 		}
 		InputFile.close();	
-
-
 }
-
 
 int CBAManager::getnearestHumanDirection()
 {
@@ -1200,10 +1191,17 @@ int CBAManager::getMDPfromFeature()
 	 int robotid=pMapParam->robot_map_id;
 	 int res=0;
 
+     for(int i(0);i<m_MDPsolutionMap.size();i++)
+     {
+         std::cout<<m_MDPsolutionMap[i]<<",";
+     
+     }
+    std::cout<<std::endl;
+
 	 	if(m_MDPsolutionMap.size()>0)
 		{
-			res=m_MDPsolutionMap[robotid];
-			ROS_INFO("mdp sol load id : %d, res : %d", robotid,res);
+			res=static_cast<int>(m_MDPsolutionMap[robotid]);
+			ROS_INFO("mdp sol load id : %d,  res : %d", robotid,res);
 		}
 	return res;
 }

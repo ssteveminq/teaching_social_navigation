@@ -220,6 +220,7 @@ class MDPManager
  	char            getPolicychar(int policyidx);
  	void			printPath();
     void            loadMDPPath();
+    void            loadMDPsol();
  	void 			generatePath();
  	void 			generate_dynamicPath();
  	void            pathPublish();
