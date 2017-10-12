@@ -1416,28 +1416,17 @@ void MDPManager::saveMDPPath()
     {
         for(int j(0);j<Scaled_static_map_path.info.width;j++) 
         {
-
             double double_temp;
             string string_temp;
-
             double_temp = static_cast<double> (Scaled_static_map_path.data[i*Scaled_static_map_path.info.width+j]);
             //string_temp = static_cast<string> (Scaled_static_map_path.data[i*Scaled_static_map_path.info.width+j]);
-
-            std::cout<<"double : "<<double_temp<<",string "<<string_temp.c_str()<<std::endl;
+            //std::cout<<"double : "<<double_temp<<",string "<<string_temp.c_str()<<std::endl;
             mdppathfile<<double_temp<<"\t";
-
-
         } 
         mdppathfile<<endl;
-
     }
-
     mdppathfile.close();
-
-
-
 }
-
 
 void  MDPManager::loadMDPPath()
 {

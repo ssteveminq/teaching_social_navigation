@@ -499,9 +499,9 @@ void CBAManager::mdpsol_Callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
   for(int i(0);i<msg->data.size();i++)
     {
       m_MDPsolutionMap[i]=msg->data[i];
-      std::cout<<m_MDPsolutionMap[i]<<",";
+      //std::cout<<m_MDPsolutionMap[i]<<",";
     }
-  std::cout<<std::endl;
+  //std::cout<<std::endl;
 }
 
 void CBAManager::CmdIntCallback(const std_msgs::Int8::ConstPtr& msg)
@@ -846,6 +846,7 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 			//SaveCurrentPolicy(cur_featureV, Desiredaction);	
 			ROS_INFO("predicted policy : %d, Confidence :%.3lf \n", Desiredaction, pClassifier->Confidence);
 
+            SaveTotalPolicy(cur_featureV,Desiredaction);
 			
 		break;
 		case 11: //Good
@@ -860,6 +861,8 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 				Storedbaddecision=0;
 				Isbad=false;
 			}	
+
+                //SaveTotalPolicy(storedFeaturevector,Desiredaction)
 
 			// HSR_Pub.publish(cmd_action);
 			break;
@@ -948,8 +951,10 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 		break;
 
 //		default: 
-
 	}
+
+
+
 
 
 	return 0;
@@ -1065,7 +1070,6 @@ void CBAManager::SaveCurrentPolicy(const std::vector<float> StateVector, int _Po
 	TotalTrainingDataSet.push_back(tempVector);
 	 
 	 tempVector.clear();	
-
 }
 
 void CBAManager::SaveBadPolicy(const std::vector<float> StateVector, int bad, int good)
@@ -1080,6 +1084,7 @@ void CBAManager::SaveBadPolicy(const std::vector<float> StateVector, int bad, in
 
 	 tempFVector[Feature_dim]=bad;
 	 tempFVector[Feature_dim+1]=good;
+	 //tempFVector[Feature_dim+2]=good;
 
   	BadDecisionLog.push_back(tempFVector);
 	 
@@ -1087,6 +1092,20 @@ void CBAManager::SaveBadPolicy(const std::vector<float> StateVector, int bad, in
 
 }
 
+void CBAManager::SaveTotalPolicy(const std::vector<float> StateVector, int predict_policy, int good)
+{
+	
+	 vector<float>  tempFVector(Feature_dim+1);
+	 for(int i(0);i<Feature_dim;i++)
+	 	tempFVector[i]=StateVector[i];
+
+	 tempFVector[Feature_dim]=predict_policy;
+	 //tempFVector[Feature_dim+1]=good;
+
+  	TotalDecisionLog.push_back(tempFVector);
+	//  tempVector.clear();	
+
+}
 
 bool CBAManager::UpdateClassifier()
 {
@@ -1459,11 +1478,14 @@ void CBAManager::saveCurrentDataFile()
 	ofstream TrainingFileData;
 	ofstream TrainingFileState;
 	ofstream BadDtaLog;
+	ofstream TotalDataLog;
 	
-	TrainingFile.open("/home/mk/TotalTrainingFile_recent.csv");
-	TrainingFileData.open("/home/mk/TrainingData_recent.csv");
-	TrainingFileState.open("/home/mk/TrainingState_recent.csv");
-	BadDtaLog.open("/home/mk/BadLog_recent.csv");
+	TrainingFile.open("/home/mk/cba_ws/datalog/TotalTrainingFile_recent.csv");
+	TrainingFileData.open("/home/mk/cba_ws/datalog/TrainingData_recent.csv");
+	TrainingFileState.open("/home/mk/cba_ws/datalog/TrainingState_recent.csv");
+	BadDtaLog.open("/home/mk/cba_ws/datalog/BadLog_recent.csv");
+    TotalDataLog.open("/home/mk/cba_ws/datalog/TotalLog_recent.csv");
+
 	cout<<"Save Data File "<<endl;
 	//TrainingStateFile.open("TrainingStateFile.csv");
 
@@ -1489,21 +1511,16 @@ void CBAManager::saveCurrentDataFile()
 		for(int j(0);j<Feature_dim;j++)
 		{
 			TrainingFileData<<TotalTrainingDataSet[i][j]<<',';
-		
 		}
 			//Save State
 			TrainingFileData<<endl;
 	}
 	TrainingFileData.close();
 
-
 	//State
 	for(int i(0);i<Datasize;i++)
 	{
-	
 		TrainingFileState<<TotalTrainingDataSet[i][Feature_dim]<<endl;
-		
-		
 		//Save State
 		//	TrainingFileState<<endl;
 	}
@@ -1519,6 +1536,24 @@ void CBAManager::saveCurrentDataFile()
 	}
 	BadDtaLog.close();
 
+    
+    for(int i(0);i< TotalDecisionLog.size();i++)
+	{
+		for(int j(0);j<Feature_dim+1;j++)
+		TotalDataLog<<TotalDecisionLog[i][j]<<',';
+
+		TotalDataLog<<endl;		
+	}
+	TotalDataLog.close();
+
+
+
+
+
+
+
+
+    
 	cout<<"Current Data Size is : "<<TotalTrainingDataSet.size()<<endl;
 
 }

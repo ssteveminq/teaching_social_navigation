@@ -132,6 +132,7 @@ public:
 	void setGoalConfig (const vector<int> Goal);
 	void SaveCurrentPolicy(const std::vector<float> StateVector, int _Policy);
 	void SaveBadPolicy(const std::vector<float> StateVector, int bad, int good);
+    void SaveTotalPolicy(const std::vector<float> StateVector, int bad=0, int good=0);
     bool UpdateClassifier();
     void ConvertVec2Map();
     void IntializeROS_publisher();
@@ -145,6 +146,7 @@ public:
 
     vector<vector<float> > TotalTrainingDataSet;              // Row, col, State(last column)
     vector<vector<float> >  BadDecisionLog;
+    vector<vector<float> > TotalDecisionLog;
 
     //Get function
 	vector<int> 	getGoalConfig();

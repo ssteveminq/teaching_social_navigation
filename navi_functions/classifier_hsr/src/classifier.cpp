@@ -786,7 +786,7 @@ int ELMClassifier::readSignalDataFile()
 		int j=0;
 		int temps=0;
 		//std::string FileName = "/home/mk/catkin_ws/src/hri_final_project/Classifier/src/Dataset.csv";
-		std::string FileName = "/home/mk/TrainingData_.csv";
+		std::string FileName = "/home/mk/cba_ws/datalog/using/TrainingData_.csv";
 		ifstream InputFile(FileName.c_str());
 
 		string str;
@@ -829,7 +829,7 @@ int ELMClassifier::readSignalDataFile()
 
 
 		//////Read DataSetState////
-		std::string FileName2 = "/home/mk/TrainingState_.csv";
+		std::string FileName2 = "/home/mk/cba_ws/datalog/using/TrainingState_.csv";
 		ifstream InputFile2(FileName2.c_str());
 
 		DataSetState= MatrixXd(DataLenth,1);
