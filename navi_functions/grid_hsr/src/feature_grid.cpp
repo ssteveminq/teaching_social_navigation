@@ -328,6 +328,7 @@ GridMap::GridMap(){
 	global_pose.resize(3,0.0);
 
 
+    human_idx_feature =0;
 	num_of_cells_height=24;
 	num_of_cells_width=24;
 	
@@ -357,9 +358,9 @@ GridMap::GridMap(){
 
 	// Assign Grid Map cell values mkmk
 	//identify_grid_map_occupancy();
-	
-	identify_static_grid_map_occupancy();
-	convert_static_map_to_cba_grid();
+//mkchagne 171013	
+	//identify_static_grid_map_occupancy();
+	//convert_static_map_to_cba_grid();
 
 
 
@@ -868,6 +869,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		//check occupancy from dynamic map
 		std::map<int,float> MinDistMap;
 		float min_distance=100;
+        float distance_robot_human=0.0;
 
 		for(int j(0);j<feature_map_grid.info.height;j++)
 			for(int i(0); i<feature_map_grid.info.width;i++)
@@ -895,6 +897,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 				//check each distance of small grids
 				numcount=0;
 				humancount=0;
+                distance_robot_human=0.0;
 				
 				min_distance=100;
 				for(int column_j(0);column_j<height_ratio_cons;column_j++)
@@ -920,6 +923,7 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 						if(isitHuman)
 						{
 							humancount++;
+                            distance_robot_human=getdist_robot_human(human_idx_feature);
                              //ROS_INFO("near human");
 						 }
 
@@ -945,7 +949,13 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 				 	MinDistMap[feature_map_idx]=min_distance;
 				 	
 				 	if(humancount)
-				 		occupancyCountMap[feature_map_idx]=1000;
+                    {
+                        occupancyCountMap[feature_map_idx]=1000;
+                        //float dist_human_robot = getdist_robot_human(human_idx_feature);
+                        //ROS_INFO("distance to human :%d,  %.3lf \n",human_idx_feature, dist_human_robot);
+                        MinDistMap[feature_map_idx]=distance_robot_human;
+
+                    }
 				 	else
 				 		occupancyCountMap[feature_map_idx]=numcount;
 
@@ -1039,8 +1049,10 @@ void GridMap::dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& 
 		cba_feature_msg.height = num_of_cells_height;
 		cba_feature_msg.int_robot_id=robot_pos_id;
 		cba_feature_msg.human_present=1;
+        cba_feature_msg.min_dist_human=get_min_dist_robot_human();
 
-
+        cba_feature_msg.unit_x_to_human = nearest_human_x; 
+        cba_feature_msg.unit_y_to_human = nearest_human_y; 
 		//ROS_INFO("human_present:%d\n",cba_feature_msg.int_robot_id);
 
 		cba_feature_msg.state_type.resize(datasize-1);
@@ -1076,8 +1088,55 @@ void GridMap::static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg)
 {
 
 
+}
+
+float GridMap::get_min_dist_robot_human()
+{
+
+    float dist_from_Robot =0.0;
+    float min_dist_to_human=100.0;
+    int min_idx=-1;
+
+    for(int i(0);i<Cur_existed_human.size();i++)
+    {
+     
+       dist_from_Robot = getdist_robot_human(i); 
+       if(min_dist_to_human>dist_from_Robot)
+       {
+           min_dist_to_human=dist_from_Robot;
+            min_idx=i;
+            nearest_human_x = Cur_existed_human[min_idx][0];
+            nearest_human_y = Cur_existed_human[min_idx][1];
+       }
+
+    }
+    if(min_dist_to_human==100.0)
+    {
+        min_dist_to_human= -1.0;
+        nearest_human_x = 0.0;
+        nearest_human_y = 0.0;
+    }
+
+    return min_dist_to_human;
+}
+
+float GridMap::getdist_robot_human(int human_idx)
+{
+   float dist_from_Robot=0.0;
+
+   if((Cur_existed_human.size()>0) && (human_idx>-1))
+   {
+       double human_x=Cur_existed_human[human_idx][0];
+       double human_y=Cur_existed_human[human_idx][1];
+
+       dist_from_Robot  = pow(human_x-robot_world_x_pos,2)+pow(human_y-robot_world_y_pos,2);
+       dist_from_Robot  = sqrt(dist_from_Robot);
+       return dist_from_Robot;
+   }
+   return 0.0;
 
 }
+
 
 bool GridMap::checkpointHuman(float x_pos,float y_pos)
 {
@@ -1085,8 +1144,8 @@ bool GridMap::checkpointHuman(float x_pos,float y_pos)
 	// bool booldetectedhuman=1;					//this variable should be come from the detected box topic
 	// float detected_human_x=1;
 	// float detected_human_y=1;
-	 float boundingbox_length_x=0.6;
-	 float boundingbox_length_y=0.6;
+	 float boundingbox_length_x=0.4;
+	 float boundingbox_length_y=0.4;
 
 	//detected bounding box
 	if(detected_human)
@@ -1098,13 +1157,15 @@ bool GridMap::checkpointHuman(float x_pos,float y_pos)
 
 			if((x_pos>detected_human_x-0.5*boundingbox_length_x) && (x_pos<detected_human_x+0.5*boundingbox_length_x))
 				if((y_pos>detected_human_y-0.5*boundingbox_length_y) && (y_pos<detected_human_y+0.5*boundingbox_length_y))
+                {
+                    human_idx_feature =i;
 					return true;
-
+                }
 
 		}
 	}
 
-
+    human_idx_feature=-1;
 	return false;
 
 }

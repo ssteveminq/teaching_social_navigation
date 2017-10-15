@@ -103,7 +103,7 @@ public:
    	vector<int>  m_Start;							//Start position of(x,y)
 	vector<int>  m_Goal;							//Goal position of (x,y)
 	vector<int>  m_Robot;					    	//Current Robot position of (x,y)
-	vector<float> m_unitGoal;
+	vector<float> m_reivedgoal;
 	
 
 	vector<float> storedFeaturevector;
@@ -123,6 +123,7 @@ public:
 	float		 robot_global_x_pos;
     float 		 robot_global_y_pos;
 	float		 robot_theta_yaw;
+    float       min_dist_robot_human;
 
 
 	//Set function
@@ -132,7 +133,7 @@ public:
 	void setGoalConfig (const vector<int> Goal);
 	void SaveCurrentPolicy(const std::vector<float> StateVector, int _Policy);
 	void SaveBadPolicy(const std::vector<float> StateVector, int bad, int good);
-    void SaveTotalPolicy(const std::vector<float> StateVector, int bad=0, int good=0);
+    void SaveTotalPolicy(const std::vector<float> StateVector, int predict_policy,int desired_action, double confidence);
     bool UpdateClassifier();
     void ConvertVec2Map();
     void IntializeROS_publisher();

@@ -81,7 +81,7 @@ class SpeechGui(QtGui.QWidget):
 
       # Get commands from the listener
       self.keywords = ["BAD", "GOOD", "Save","Move"]#rospy.get_param(SpeechListener.KEYWORDS_PARAM, dict()).values()
-      self.commands = ["Bad", "Good", "Turn Left", "Predict", "Auto", "Turn Right","Save", "Load"  ,"Go Forward", "Move", "Update", "Clear Data"] #[val for sublist in self.keywords for val in sublist]
+      self.commands = ["Bad", "Good", "Turn Left", "Predict", "Human", "Turn Right","Save", "Load"  ,"Go Forward", "Move", "Update", "Clear Data"] #[val for sublist in self.keywords for val in sublist]
       
       # self.commands.sort()
  
@@ -124,8 +124,8 @@ class SpeechGui(QtGui.QWidget):
         num_cmd=12
       elif command =="Save":
         num_cmd=13
-      elif command =="Auto":
-        num_cmd=14
+      elif command =="Human":
+        num_cmd=15
       elif command =="Load":
         num_cmd=16
       elif command =="Clear Data":

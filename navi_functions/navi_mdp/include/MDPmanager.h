@@ -221,6 +221,7 @@ class MDPManager
  	void			printPath();
     void            loadMDPPath();
     void            loadMDPsol();
+    void            loadMDPgoal();
  	void 			generatePath();
  	void 			generate_dynamicPath();
  	void            pathPublish();

@@ -172,7 +172,7 @@ public:
 	int num_of_cells_height;	
 
 	int robot_pos_id;
-
+    int human_idx_feature;
 
 	float origin_x;
 	float origin_y;
@@ -185,6 +185,8 @@ public:
 	int num_of_human_belief;
 	bool detected_human;
 
+    float nearest_human_x;
+    float nearest_human_y;
 
 	visualization_msgs::Marker 		map_free_cell_list;
 	visualization_msgs::Marker 		map_free_cell_list_dyn;
@@ -240,7 +242,7 @@ public:
 	std::vector<int> index_of_updated_obstacle_occ_cells;
 	std::vector<int> index_of_updated_free_occ_cells;			
 
-
+    
 	nav_msgs::OccupancyGrid static_map_grid;
 	nav_msgs::OccupancyGrid dynamic_map_grid;
 	nav_msgs::OccupancyGrid proj_map_grid; // The original map
@@ -257,6 +259,7 @@ public:
 	void init_construct_free_and_occ_cells();
 	void construct_robot_cells();
 
+    float get_min_dist_robot_human();
 	void static_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 	void dynamic_obs_ref_callback(const nav_msgs::OccupancyGrid::ConstPtr& msg);
 	void static_gridcell_callback(const nav_msgs::GridCells::ConstPtr& msg);
@@ -283,6 +286,7 @@ public:
 	void visualize_robotEnvFeatures();
 	void change_marker_prop(int occupancy_type, visualization_msgs::Marker &marker);
 
+    float getdist_robot_human(int human_idx);
 
     void publish();
     void humanpublish();

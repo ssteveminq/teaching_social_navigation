@@ -117,7 +117,7 @@ void CBAManager::Init()
 	m_Start =vector<int>(2,0);
 	m_Goal  =vector<int>(2,0);
 	m_Robot  =vector<int>(2,0);
-	m_unitGoal=vector<float>(2,0.0);
+	m_reivedgoal=vector<float>(2,0.0);
 
     Desiredaction =0;
 
@@ -291,145 +291,43 @@ vector<int> CBAManager::getCurRobotCoord()
 
 int CBAManager::getnearestGoalDirection()
 {
-//Goal has to be assigned
-int GoalDirection=0;
+    geometry_msgs::Vector3Stamped gV, tV;
+    gV.vector.x = m_reivedgoal[0]-robot_global_x_pos;
+    gV.vector.y = m_reivedgoal[1]-robot_global_y_pos;
+    gV.vector.z = 1.0;
 
-vector < vector<double> > ActionCC;
-ActionCC.resize(8);
-for(int i(0);i<8;i++)
-	ActionCC[i].resize(2);
+    gV.header.stamp = ros::Time();
+    gV.header.frame_id = "/map";
+    listener.transformVector("/base_link",gV,tV);
+    
+    std::vector<double> goal_position_from_base(2,0.0);
+    goal_position_from_base[0]=tV.vector.x;
+    goal_position_from_base[1]=tV.vector.y;
+    //Goal has to be assigned
+    int GoalDirection=0;
+    vector < vector<double> > ActionCC;
+    ActionCC.resize(8);
+    for(int i(0);i<8;i++)
+        ActionCC[i].resize(2);
 
-ActionCC[0][0]=1;   ActionCC[0][1]=0;
-ActionCC[1][0]=1/sqrt(2);   ActionCC[1][1]=1/sqrt(2);
-ActionCC[2][0]=0;   ActionCC[2][1]=1;
-ActionCC[3][0]=-1/sqrt(2);  ActionCC[3][1]=1/sqrt(2);
-ActionCC[4][0]=-1;  ActionCC[4][1]=0;
-ActionCC[5][0]=-1/sqrt(2);  ActionCC[5][1]=-1/sqrt(2);
-ActionCC[6][0]=0;   ActionCC[6][1]=-1;
-ActionCC[7][0]=1/sqrt(2);   ActionCC[7][1]=-1/sqrt(2);
+    ActionCC[0][0]=1;   ActionCC[0][1]=0;
+    ActionCC[1][0]=1/sqrt(2);   ActionCC[1][1]=1/sqrt(2);
+    ActionCC[2][0]=0;   ActionCC[2][1]=1;
+    ActionCC[3][0]=-1/sqrt(2);  ActionCC[3][1]=1/sqrt(2);
+    ActionCC[4][0]=-1;  ActionCC[4][1]=0;
+    ActionCC[5][0]=-1/sqrt(2);  ActionCC[5][1]=-1/sqrt(2);
+    ActionCC[6][0]=0;   ActionCC[6][1]=-1;
+    ActionCC[7][0]=1/sqrt(2);   ActionCC[7][1]=-1/sqrt(2);
 
-vector<double> innervector(8,0.0);
-float yaw_angle_deg=0.0;
-float temp=0.0;
-float temp_deg=0.0;
-float temp_Robot2Goal=0.0;
+    vector<double> innervector(8,0.0);
 
+    for(int i(0);i<8;i++)
+        innervector[i]=ActionCC[i][0]*goal_position_from_base[0]+ActionCC[i][1]*goal_position_from_base[1];
 
-temp=sqrt(m_Goal[0]*m_Goal[0]+m_Goal[1]*m_Goal[1]);
-vector<float> unitgoal(2,0.0);
-
-//find the unit vector w.r.t robot heading direction
-vector<float> robotheadingdirection(2,0.0);
-
-robotheadingdirection[0]=1.0;
-robotheadingdirection[1]=tan(robot_theta_yaw);
-float nomr_v=sqrt(pow(robotheadingdirection[0],2)+pow(robotheadingdirection[1],2));
-
-if(nomr_v>0){
-
-	robotheadingdirection[0]=robotheadingdirection[0]/nomr_v;
-	robotheadingdirection[1]=robotheadingdirection[1]/nomr_v;
-}
-//ROS_INFO("normv : %.3lf, x : %.3lf , y : %.3lf \n",nomr_v,robotheadingdirection[0],robotheadingdirection[1]);
-
-//Find the angle from robot to Goal poistion
- if(abs(m_unitGoal[0])!=0)
-	temp_Robot2Goal=atan(m_unitGoal[1]/m_unitGoal[0]);
-
-
-
-
-//Innerproduct
-temp = m_unitGoal[0]*robotheadingdirection[0]+m_unitGoal[1]*robotheadingdirection[1];
-float temp_norm = sqrt(pow(m_unitGoal[0],2)+pow(m_unitGoal[1],2))*sqrt(pow(robotheadingdirection[0],2)*pow(robotheadingdirection[1],2));
-
-temp =acos(temp);
-
-yaw_angle_deg=robot_theta_yaw*180/(3.141592);
-float temp_headingangle_deg=temp_Robot2Goal*180/(3.141592);
-
-
-temp_deg=temp_headingangle_deg-yaw_angle_deg;
-// temp_deg=temp_deg*180/(3.141592);
-//ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between angle : %.3lf",robot_theta_yaw,temp_headingangle,temp);
-//ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between angle : %.3lf",yaw_angle_deg,temp_headingangle_deg,temp_deg);
-unitgoal[0]=1.0;
-unitgoal[1]=tan(temp);
-nomr_v = sqrt(pow(unitgoal[0],2)+pow(unitgoal[1],2));
-unitgoal[0]=unitgoal[0]/nomr_v;
-unitgoal[1]=unitgoal[1]/nomr_v;
-
-int NearestGoal_dir=0;
-
-//These degrees are detrmined with atan(1/3), atan(3) : square grid 
-//
-//     |---|---|---|
-//	   | 4 | 3 | 2 |
-//	   |---|---|---|
-//	   | 5 | R | 1 |
-//	   |---|---|---|
-//	   | 6 | 7 | 8 |
-//	   |---|---|---|
-//
-///
-/// May be I should include Robot cell itself? 
-
-	if(temp_deg<18.1)
-	{
-		NearestGoal_dir=1;
-	}
-	else if(temp_deg < 71)
-	{
-		NearestGoal_dir=2;
-	}
-	else if(temp_deg < 107.2)
-	{
-		NearestGoal_dir=3;
-	}
-	else if(temp_deg <161)
-	{
-		NearestGoal_dir=4;
-	}
-	else if(temp_deg <198)
-	{
-		NearestGoal_dir=5;
-	}
-	else if (temp_deg <251)
-	{
-		NearestGoal_dir=6;
-	}
-	else if (temp_deg <289)
-	{
-		NearestGoal_dir=7;
-	}
-	else if (temp_deg <342)
-	{
-		NearestGoal_dir=8;
-	}
-	else{
-
-		NearestGoal_dir=1;
-	 }
-
-ROS_INFO("Yaw :%.3lf, heading angle : %.3lf,  Between: %.3lf , NGoal_dir : %d ",yaw_angle_deg,temp_headingangle_deg,temp_deg,NearestGoal_dir);
-
-// unitgoal[0]=m_unitGoal[0]-robotheadingdirection[0];
-// unitgoal[1]=m_unitGoal[1]-robotheadingdirection[1];
-// nomr_v = sqrt(pow(unitgoal[0],2)+pow(unitgoal[1],2));
-// unitgoal[0]=unitgoal[0]/nomr_v;
-// unitgoal[1]=unitgoal[1]/nomr_v;
-
-//cout<<"Goal unit direction : "<<unitgoal[0]<<" , "<<unitgoal[1]<<endl;
-// for(int i(0);i<8;i++)
-// 	 innervector[i]=ActionCC[i][0]*unitgoal[0]+ActionCC[i][1]*unitgoal[1];
-
-// int maxvalue_ix =getIndexOfLargestElement(innervector);
-
-// maxvalue_ix++;
-
-//cout<<"Goal direction : "<<maxvalue_ix<<endl;
-
-return NearestGoal_dir;
+    int NearestGoal_dir=0;
+    NearestGoal_dir=getIndexOfLargestElement(innervector);
+    NearestGoal_dir++;
+    return NearestGoal_dir;
 
 }
 
@@ -470,21 +368,16 @@ void CBAManager::updateMaptoVec()
 			}
 		}
 
-
 		cout<<"TrainingState"<<endl;
 		for(int i(0);i<TrainingDataState.size();i++)
 			cout<<TrainingDataState[i]<<", ";
 		cout<<endl;
-
-
 
 		cout<<"Trainingdata size"<<TrainingDataSet.size()<<endl;
 		for(int k(0);k<TrainingDataSet.size();k++)
 		{	for(int j(0);j<TrainingDataSet[0].size();j++)
 			{
 				cout<<TrainingDataSet[k][j]<<",";
-
-
 			}
 			cout<<endl;
 		}
@@ -506,38 +399,24 @@ void CBAManager::mdpsol_Callback(const std_msgs::Int32MultiArray::ConstPtr& msg)
 
 void CBAManager::CmdIntCallback(const std_msgs::Int8::ConstPtr& msg)
 {
-    //ROS_INFO("int msg");
     ROS_INFO("Cur cmd :%d ",msg->data);
-
     int cmdfromGUI=(int)(msg->data);
-   
     ActionfromGUICmd(cmdfromGUI);
-
-  
-        return;
+    return;
 }
 
 
 void CBAManager::Unitgoal_Callback(const std_msgs::Float32MultiArray::ConstPtr& msg)
 { 
 
-   m_unitGoal[0]=msg->data[0]- robot_global_x_pos;
-   m_unitGoal[1]=msg->data[1]- robot_global_y_pos;
-
-   // m_Manager.m_Goal[0]=m_Manager.Local_X_start+scaledGoalPos[0]*m_Manager.Scale_constant-1;
-   // m_Manager.m_Goal[1]=m_Manager.Local_Y_start+scaledGoalPos[1]*m_Manager.Scale_constant-1;
-   //ROS_INFO("msg-data x: %.3lf, y: %.3lf\n",msg->data[0],msg->data[1]);
-   //ROS_INFO("unit goal x: %.3lf, y: %.3lf\n",m_Manager.m_unitGoal[0],m_Manager.m_unitGoal[1]);
-   //cout<<"Goal Pose is x: "<<m_Manager.m_Goal[0]<<"y : "<<m_Manager.m_Goal[1]<<endl;
-
+   m_reivedgoal[0]=msg->data[0];
+   m_reivedgoal[1]=msg->data[1];
 }
-
 
 void CBAManager::global_pose_callback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 {
   
    std::vector<double> global_pose(3,0.0);
-
    global_pose[0]=msg->pose.position.x;
    global_pose[1]=msg->pose.position.y;
 
@@ -594,6 +473,7 @@ void CBAManager::NavInfo_Callback(const cba_msgs::CBA_NavInfo::ConstPtr& msg)
 
    int robot_map_id=msg->int_robot_id;
 
+   min_dist_robot_human=msg->min_dist_human;
 // std::cout<<"NH x:" << NearestHumanVector[0]<< ",  y : "<<NearestHumanVector[1]<<endl;  
 
 // std::cout<<"Heading x:" << RobotHeadingDirection[0]<< ",  y : "<<RobotHeadingDirection[1]<<endl;  
@@ -688,85 +568,94 @@ void CBAManager::LoadMDPSolutionFile()
 
 int CBAManager::getnearestHumanDirection()
 {
+    geometry_msgs::Vector3Stamped gV, tV;
+    gV.vector.x = pMapParam->NearestHuman_V[0]-robot_global_x_pos;
+    gV.vector.y = pMapParam->NearestHuman_V[1]-robot_global_y_pos;
+    gV.vector.z = 1.0;
 
-int Humandirection=0;
+    gV.header.stamp = ros::Time();
+    gV.header.frame_id = "/map";
+    listener.transformVector("/base_link",gV,tV);
+    
+    std::vector<double> human_position_from_base(2,0.0);
+    human_position_from_base[0]=tV.vector.x;
+    human_position_from_base[1]=tV.vector.y;
 
-vector < vector<double> > ActionCC;
-ActionCC.resize(8);
-for(int i(0);i<8;i++)
-	ActionCC[i].resize(2);
+    //std::cout<<"nearest human x :"<<human_position_from_base[0]<<", " <<human_position_from_base[1]<<std::endl;
 
+    int Humandirection=0;
+    vector < vector<double> > ActionCC;
+    ActionCC.resize(8);
+    for(int i(0);i<8;i++)
+        ActionCC[i].resize(2);
 
-ActionCC[0][0]=1;   ActionCC[0][1]=0;
-ActionCC[1][0]=1/sqrt(2);   ActionCC[1][1]=1/sqrt(2);
-ActionCC[2][0]=0;   ActionCC[2][1]=1;
-ActionCC[3][0]=-1/sqrt(2);  ActionCC[3][1]=1/sqrt(2);
-ActionCC[4][0]=-1;  ActionCC[4][1]=0;
-ActionCC[5][0]=-1/sqrt(2);  ActionCC[5][1]=-1/sqrt(2);
-ActionCC[6][0]=0;   ActionCC[6][1]=-1;
-ActionCC[7][0]=1/sqrt(2);   ActionCC[7][1]=-1/sqrt(2);
-vector<double> innervector(8,0.0);
+    ActionCC[0][0]=1;   ActionCC[0][1]=0;
+    ActionCC[1][0]=1/sqrt(2);   ActionCC[1][1]=1/sqrt(2);
+    ActionCC[2][0]=0;   ActionCC[2][1]=1;
+    ActionCC[3][0]=-1/sqrt(2);  ActionCC[3][1]=1/sqrt(2);
+    ActionCC[4][0]=-1;  ActionCC[4][1]=0;
+    ActionCC[5][0]=-1/sqrt(2);  ActionCC[5][1]=-1/sqrt(2);
+    ActionCC[6][0]=0;   ActionCC[6][1]=-1;
+    ActionCC[7][0]=1/sqrt(2);   ActionCC[7][1]=-1/sqrt(2);
+    vector<double> innervector(8,0.0);
 
-for(int i(0);i<8;i++)
- innervector[i]=ActionCC[i][0]*pMapParam->NearestHuman_V[0]+ActionCC[i][1]*pMapParam->NearestHuman_V[1];
+    for(int i(0);i<8;i++)
+        innervector[i]=ActionCC[i][0]*human_position_from_base[0]+ActionCC[i][1]*human_position_from_base[1];
 
-
- Humandirection=getIndexOfLargestElement(innervector);
- Humandirection++;
-// float maxvalue =max_element(innervector,innervector+8);
-// for(int i(0);i<innervector.size();i++)
-// {
-// 	if(innervector[i]==maxvalue)
-// 		Humandirection=i;
-// }
-
-
-return Humandirection;
-
-
-//int maxindex=std::max_element(innervector,innervector+innervector.size())-innervector;
-
-
-
-// vector<int> RobotCoord=getCurRobotCoord();
-//  vector<int> Humancellvector=getHuman_CellVector();  
-// vector<int>Humanpos;
-
-// if(Humancellvector.size()>0)
-//   Humanpos=CellNum2Coord(Humancellvector[0]);
-// else
-// {
-// 	Humandirection=0;	
-// 	return Humandirection;
-// }
-
-// int x_diff =Humanpos[0]-RobotCoord[0];
-// int y_diff =Humanpos[1]-RobotCoord[1];
-
-// int tempx,tempy=0;
-
-// if(x_diff>0)
-//     tempx=1;   
-// else if(x_diff<0)
-//     tempx=-1;   
-// else
-//     tempx=0;
-
-// if(y_diff>0)
-//     tempy=1;   
-// else if(y_diff<0)
-//     tempy=-1;   
-// else
-//     tempy=0;
+    Humandirection=getIndexOfLargestElement(innervector);
+    Humandirection++;
+    // float maxvalue =max_element(innervector,innervector+8);
+    // for(int i(0);i<innervector.size();i++)
+    // {
+    // 	if(innervector[i]==maxvalue)
+    // 		Humandirection=i;
+    // }
 
 
-// for(int i(0);i<Num_action;i++)
-// {
-//     if((ActionCC[i][0]==tempx) && (ActionCC[i][1]==tempy))
-// 	        Humandirection=i;
-// }
+    return Humandirection;
 
-	return Humandirection;
+
+    //int maxindex=std::max_element(innervector,innervector+innervector.size())-innervector;
+
+    // vector<int> RobotCoord=getCurRobotCoord();
+    //  vector<int> Humancellvector=getHuman_CellVector();  
+    // vector<int>Humanpos;
+
+    // if(Humancellvector.size()>0)
+    //   Humanpos=CellNum2Coord(Humancellvector[0]);
+    // else
+    // {
+    // 	Humandirection=0;	
+    // 	return Humandirection;
+    // }
+
+    // int x_diff =Humanpos[0]-RobotCoord[0];
+    // int y_diff =Humanpos[1]-RobotCoord[1];
+
+    // int tempx,tempy=0;
+
+    // if(x_diff>0)
+    //     tempx=1;   
+    // else if(x_diff<0)
+    //     tempx=-1;   
+    // else
+    //     tempx=0;
+
+    // if(y_diff>0)
+    //     tempy=1;   
+    // else if(y_diff<0)
+    //     tempy=-1;   
+    // else
+    //     tempy=0;
+
+
+    // for(int i(0);i<Num_action;i++)
+    // {
+    //     if((ActionCC[i][0]==tempx) && (ActionCC[i][1]==tempy))
+    // 	        Humandirection=i;
+    // }
+
+	//return Humandirection;
 
 
 }
@@ -828,6 +717,8 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 {
 	bool IsSave=true;
 	bool ReadytoMove=false;
+    double confidence_policy =0.0;
+    int predicted_policy=0;
 	vector<float> cur_featureV=getFeaturevector();
 
 	for(int i(0);i<cur_featureV.size();i++)
@@ -843,10 +734,11 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 			cout<<"predict"<<endl;
 			Desiredaction=getDirectionfromCBA(cur_featureV);
 
+            predicted_policy=Desiredaction;
 			//SaveCurrentPolicy(cur_featureV, Desiredaction);	
+            confidence_policy = static_cast<double> (pClassifier->Confidence);
 			ROS_INFO("predicted policy : %d, Confidence :%.3lf \n", Desiredaction, pClassifier->Confidence);
-
-            SaveTotalPolicy(cur_featureV,Desiredaction);
+            //SaveTotalPolicy(cur_featureV,predicted_policy,confidence_policy);
 			
 		break;
 		case 11: //Good
@@ -874,9 +766,13 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 				// IsSave=false;
 				cout<<"Teach me the desired direction"<<endl;
 			break;
-		case 15: 
+		case 18:
 				 cout<<"get MDP Solution"<<endl;
 				 Desiredaction=getMDPfromFeature();
+			break;
+        case 15:
+				 cout<<"human answer"<<endl;
+                 SaveTotalPolicy(cur_featureV,predicted_policy,Desiredaction,confidence_policy);
 			break;
 		case 13: //Save 
 				cout<<"SaveDataFile"<<endl;
@@ -1009,10 +905,7 @@ std::vector<float> CBAManager::getFeaturevector()
 	FeatureVector[18]=getMDPfromFeature();			//mdp
 
 //	ROS_INFO("goal D : %d , Human D : %d , MDP sol : %d \n",FeatureVector[16],FeatureVector[17],FeatureVector[18]);
-
-
 	//cout<<"Heading direction"<<getRobotHeadingDirection()<<endl;
-
 	return FeatureVector;
 }
 
@@ -1092,15 +985,17 @@ void CBAManager::SaveBadPolicy(const std::vector<float> StateVector, int bad, in
 
 }
 
-void CBAManager::SaveTotalPolicy(const std::vector<float> StateVector, int predict_policy, int good)
+void CBAManager::SaveTotalPolicy(const std::vector<float> StateVector, int predict_policy,int desired_action, double confidence)
 {
 	
-	 vector<float>  tempFVector(Feature_dim+1);
+	 vector<float>  tempFVector(Feature_dim+4,0.0);
 	 for(int i(0);i<Feature_dim;i++)
 	 	tempFVector[i]=StateVector[i];
 
 	 tempFVector[Feature_dim]=predict_policy;
-	 //tempFVector[Feature_dim+1]=good;
+     tempFVector[Feature_dim+1]=desired_action;
+	 tempFVector[Feature_dim+2]= confidence;
+     tempFVector[Feature_dim+3]=min_dist_robot_human;
 
   	TotalDecisionLog.push_back(tempFVector);
 	//  tempVector.clear();	
@@ -1210,12 +1105,12 @@ int CBAManager::getMDPfromFeature()
 	 int robotid=pMapParam->robot_map_id;
 	 int res=0;
 
-     for(int i(0);i<m_MDPsolutionMap.size();i++)
-     {
-         std::cout<<m_MDPsolutionMap[i]<<",";
+     //for(int i(0);i<m_MDPsolutionMap.size();i++)
+     //{
+         //std::cout<<m_MDPsolutionMap[i]<<",";
      
-     }
-    std::cout<<std::endl;
+     //}
+    //std::cout<<std::endl;
 
 	 	if(m_MDPsolutionMap.size()>0)
 		{
@@ -1539,9 +1434,8 @@ void CBAManager::saveCurrentDataFile()
     
     for(int i(0);i< TotalDecisionLog.size();i++)
 	{
-		for(int j(0);j<Feature_dim+1;j++)
+		for(int j(0);j<TotalDecisionLog[0].size();j++)
 		TotalDataLog<<TotalDecisionLog[i][j]<<',';
-
 		TotalDataLog<<endl;		
 	}
 	TotalDataLog.close();

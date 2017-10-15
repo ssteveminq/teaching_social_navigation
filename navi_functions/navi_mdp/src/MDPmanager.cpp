@@ -270,9 +270,9 @@ void MDPManager::Init()
     booltrackHuman=false;
     dyn_path_num=0;
 
-    
     loadMDPPath();
     loadMDPsol();
+    loadMDPgoal();
 
     boolpath=false;
     //ROS_INFO("here2");
@@ -544,7 +544,14 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
     GoalVector.resize(2,0);
     GoalVector[0]=msg->point.x;
     GoalVector[1]=msg->point.y;
+
+    ofstream goalinfo;
+    goalinfo.open("/home/mk/cba_ws/mdp_goal_pos.csv");
+    goalinfo<<GoalVector[0]<<"\t"<<GoalVector[1];
+    goalinfo.close();
+
     // GoalVector[0]=msg->point.x-Map_orig_Vector[0];
+    //
     // GoalVector[1]=msg->point.y-Map_orig_Vector[1];
     // CurVector[0]=0.0;
     // CurVector[1]=0.0;
@@ -568,19 +575,19 @@ void MDPManager::ClikedpointCallback(const geometry_msgs::PointStamped::ConstPtr
     //    }
 
     //Pulbish unitvector
-    std::vector<float> unitgoalvector(2,0.0);
-    unitgoalvector[0] = GoalVector[0]-CurVector[0];
-    unitgoalvector[1] = GoalVector[1]-CurVector[1];
-    float vector_norm=sqrt(unitgoalvector[0]*unitgoalvector[0]+unitgoalvector[1]*unitgoalvector[1]);
-    unitgoalvector[0] =unitgoalvector[0]/vector_norm;
-    unitgoalvector[1] =unitgoalvector[1]/vector_norm;
+    //std::vector<float> unitgoalvector(2,0.0);
+    //unitgoalvector[0] = GoalVector[0]-CurVector[0];
+    //unitgoalvector[1] = GoalVector[1]-CurVector[1];
+    //float vector_norm=sqrt(unitgoalvector[0]*unitgoalvector[0]+unitgoalvector[1]*unitgoalvector[1]);
+    //unitgoalvector[0] =unitgoalvector[0]/vector_norm;
+    //unitgoalvector[1] =unitgoalvector[1]/vector_norm;
 
-    std_msgs::Float32MultiArray unitgoal_msg;
-    unitgoal_msg.data.resize(unitgoalvector.size());
-    for(int i(0);i<unitgoalvector.size();i++)
-        unitgoal_msg.data[i] = unitgoalvector[i];
-    UnitGoalVec_pub.publish(unitgoal_msg);
-    ROS_INFO("clicked goal_uint goal x : %.3lf, y : %.3lf\n",unitgoalvector[0],unitgoalvector[1]);
+    std_msgs::Float32MultiArray goal_msg;
+    goal_msg.data.resize(2);
+    for(int i(0);i<2;i++)
+        goal_msg.data[i] = GoalVector[i];
+    UnitGoalVec_pub.publish(goal_msg);
+    ROS_INFO("clicked goal_goal x : %.3lf, y : %.3lf\n",GoalVector[0],GoalVector[1]);
     // printf("x index is %.3f, y index is %.3f \n",Goal_Coord[0],Goal_Coord[1]);  
     m_boolSolve=true;
     return;
@@ -1479,7 +1486,6 @@ void  MDPManager::loadMDPPath()
                 str.erase(str.length(),1) ;
                 b = static_cast<float>(atof(str.c_str())) ;
                 Scaled_static_map_path.data[path_idx]=b;
-
                 //cout<<b<<"\t";
             }
             //cout<<endl;
@@ -1490,9 +1496,64 @@ void  MDPManager::loadMDPPath()
     mdppathfile.close();
     Scaled_static_map_path_pub.publish(Scaled_static_map_path);
 
+    
 }
 
+void MDPManager::loadMDPgoal()
+{
+    char 	spell[50]; 
+    int 	iter=0;
+    float 	b ;
+    char 	*data_seg[10];
+    char 	*strtokens[5];
+    int 	i;
+    int     j;
+    string  str;
 
+    GoalVector.resize(2,0);
+    GoalVector[0]=7.75;
+    GoalVector[1]=4.75;
+
+    ifstream goalinfofile;
+    goalinfofile.open("/home/mk/cba_ws/mdp_goal_pos.csv");
+
+    if(!goalinfofile.is_open()){
+        cout << "Data load error" << endl;
+        exit(0);
+    }
+    else
+    {
+        while(!goalinfofile.eof()) 
+        {
+            goalinfofile.getline(spell,30);
+            if(spell[0]=='\0')
+                continue;
+
+            j=0;
+            data_seg[j]=strtok(spell,"\t");
+
+            while(data_seg[j]!=NULL)
+                data_seg[++j]=strtok(NULL,"\t");        
+
+            for(int i(0);i<2;i++)
+            {
+                str=data_seg[i];
+                str.erase(str.length(),1) ;
+                b = static_cast<float>(atof(str.c_str())) ;
+                GoalVector[i]=b;
+            }
+        }
+    }
+    goalinfofile.close();
+
+    //ToDo : make txt file to save/load goal point 
+    std_msgs::Float32MultiArray goal_msg;
+    goal_msg.data.resize(2);
+    for(int i(0);i<2;i++)
+        goal_msg.data[i] = GoalVector[i];
+    UnitGoalVec_pub.publish(goal_msg);
+
+}
 
 void  MDPManager::loadMDPsol()
 {
