@@ -120,6 +120,8 @@ void CBAManager::Init()
 	m_reivedgoal=vector<float>(2,0.0);
 
     Desiredaction =0;
+    confidence_policy=0.0;
+    predicted_policy=0;
 
 
    	m_Start[0]=Start_X;
@@ -717,8 +719,8 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 {
 	bool IsSave=true;
 	bool ReadytoMove=false;
-    double confidence_policy =0.0;
-    int predicted_policy=0;
+    //confidence_policy =0.0;
+    //predicted_policy=0;
 	vector<float> cur_featureV=getFeaturevector();
 
 	for(int i(0);i<cur_featureV.size();i++)
@@ -733,7 +735,6 @@ int CBAManager::ActionfromGUICmd(int _cmd)
 			boolAuto=false;
 			cout<<"predict"<<endl;
 			Desiredaction=getDirectionfromCBA(cur_featureV);
-
             predicted_policy=Desiredaction;
 			//SaveCurrentPolicy(cur_featureV, Desiredaction);	
             confidence_policy = static_cast<double> (pClassifier->Confidence);
@@ -773,6 +774,8 @@ int CBAManager::ActionfromGUICmd(int _cmd)
         case 15:
 				 cout<<"human answer"<<endl;
                  SaveTotalPolicy(cur_featureV,predicted_policy,Desiredaction,confidence_policy);
+                 confidence_policy =0.0;
+                 predicted_policy=0;
 			break;
 		case 13: //Save 
 				cout<<"SaveDataFile"<<endl;

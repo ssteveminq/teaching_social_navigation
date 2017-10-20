@@ -124,6 +124,8 @@ public:
     float 		 robot_global_y_pos;
 	float		 robot_theta_yaw;
     float       min_dist_robot_human;
+    double      confidence_policy;
+    int         predicted_policy;
 
 
 	//Set function
